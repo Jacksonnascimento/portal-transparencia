@@ -41,7 +41,8 @@ export default function ImportarPage() {
     toast.success("Modelo baixado com sucesso!");
   };
 
-  const handleFileChange = (e: React.ChangeEvent<INPUTElement>) => {
+  // CORREÇÃO AQUI: HTMLInputElement em vez de INPUTElement
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       if (selectedFile.name.endsWith('.csv')) {
@@ -82,7 +83,6 @@ export default function ImportarPage() {
     <div className="flex min-h-screen bg-[#F1F5F9] text-slate-900 font-sans text-sm">
       <Toaster position="top-right" />
       
-      {/* SIDEBAR */}
       <aside className="w-64 bg-[#0F172A] text-white hidden lg:flex flex-col sticky top-0 h-screen shadow-2xl">
         <div className="p-5 border-b border-slate-800">
           <h1 className="text-xl font-black tracking-tighter italic text-blue-500">HORIZON <span className="text-white">AJ</span></h1>
@@ -104,14 +104,12 @@ export default function ImportarPage() {
         </nav>
       </aside>
 
-      {/* CONTEÚDO PRINCIPAL */}
       <main className="flex-1 p-6 lg:p-12 overflow-y-auto flex flex-col items-center">
         <div className="w-full max-w-3xl">
           <Link href="/" className="inline-flex items-center text-slate-500 hover:text-blue-600 font-bold mb-8 transition-colors">
             <ArrowLeft size={16} className="mr-2" /> Voltar ao Painel
           </Link>
 
-          {/* CARD DE UPLOAD */}
           <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-200 mb-8 transition-all hover:shadow-2xl">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 font-black">
@@ -145,7 +143,6 @@ export default function ImportarPage() {
             </button>
           </div>
 
-          {/* INFORMATIVO DE PADRÃO */}
           <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-8 border-b border-slate-50 flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
@@ -159,7 +156,6 @@ export default function ImportarPage() {
                 Para que a importação ocorra sem erros, o arquivo CSV deve utilizar <strong>ponto e vírgula (;)</strong> como separador e conter as seguintes colunas exatamente nesta ordem:
               </p>
 
-              {/* GRID DE CARDS DOS CAMPOS */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                 {[
                   { title: "EXERCICIO", desc: "Ano (ex: 2025)" },
@@ -177,7 +173,6 @@ export default function ImportarPage() {
                 ))}
               </div>
 
-              {/* RODAPÉ DO INFORMATIVO */}
               <div className="pt-8 border-t border-slate-50 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3 text-slate-400 text-xs font-bold">
                   <FileSpreadsheet size={18} className="text-slate-300" />
