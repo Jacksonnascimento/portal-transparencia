@@ -1,0 +1,57 @@
+-- 1. Tabela de Credores
+CREATE TABLE IF NOT EXISTS tb_credor (
+    id BIGSERIAL PRIMARY KEY,
+    cpf_cnpj VARCHAR(14) NOT NULL UNIQUE, 
+    razao_social VARCHAR(255) NOT NULL,
+    tipo_pessoa VARCHAR(10) CHECK (tipo_pessoa IN ('FISICA', 'JURIDICA'))
+);
+
+-- 2. Tabela de Receitas
+CREATE TABLE IF NOT EXISTS tb_receita (
+    id BIGSERIAL PRIMARY KEY,
+    exercicio INT NOT NULL,
+    mes INT NOT NULL,
+    data_lancamento DATE,
+    categoria_economica VARCHAR(100) NOT NULL,
+    origem VARCHAR(100) NOT NULL,
+    especie VARCHAR(100),
+    rubrica VARCHAR(100),
+    alinea VARCHAR(100),
+    fonte_recursos VARCHAR(100) NOT NULL, 
+    valor_previsto_inicial DECIMAL(19,2),
+    valor_previsto_atualizado DECIMAL(19,2),
+    valor_arrecadado DECIMAL(19,2) NOT NULL,
+    historico TEXT
+);
+
+-- 3. Tabela de Despesas
+CREATE TABLE IF NOT EXISTS tb_despesa (
+    id BIGSERIAL PRIMARY KEY,
+    exercicio INT NOT NULL,
+    numero_empenho VARCHAR(20) NOT NULL,
+    data_empenho DATE NOT NULL,
+    orgao_codigo VARCHAR(10),
+    orgao_nome VARCHAR(255),
+    unidade_codigo VARCHAR(10),
+    unidade_nome VARCHAR(255),
+    funcao VARCHAR(100),
+    subfuncao VARCHAR(100),
+    programa VARCHAR(100),
+    acao_governo VARCHAR(100),
+    elemento_despesa VARCHAR(100),
+    fonte_recursos VARCHAR(100),
+    
+    -- VINCULO COM CREDOR (CORRIGIDO PARA BIGINT)
+    credor_id BIGINT REFERENCES tb_credor(id),
+    
+    valor_empenhado DECIMAL(19,2) DEFAULT 0,
+    valor_liquidado DECIMAL(19,2) DEFAULT 0,
+    valor_pago DECIMAL(19,2) DEFAULT 0,
+    historico_objetivo TEXT, 
+    modalidade_licitacao VARCHAR(100) 
+);
+
+-- Índices
+CREATE INDEX idx_receita_exercicio ON tb_receita(exercicio);
+CREATE INDEX idx_despesa_exercicio ON tb_despesa(exercicio);
+CREATE INDEX idx_despesa_credor ON tb_despesa(credor_id);

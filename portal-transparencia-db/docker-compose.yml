@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  portal-db:
+    image: postgres:15-alpine
+    container_name: portal_transparencia_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      # Alterado: A porta da esquerda (Host) é 5444.
+      # A porta da direita (Container) continua 5432 (padrão interno do Postgres).
+      - "5444:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - portal-network
+
+volumes:
+  postgres_data:
+
+networks:
+  portal-network:
+    driver: bridge
