@@ -1,17 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import api from '../../services/api';
+import api from '@/services/api'; // Ajuste o caminho se necessário (ex: ../../services/api)
 import Link from 'next/link';
+import { Sidebar } from '@/components/Sidebar'; // <--- IMPORTAMOS AQUI
 import { toast, Toaster } from 'react-hot-toast';
 import { 
   FileUp, 
   ArrowLeft, 
   CheckCircle2, 
   Loader2,
-  LayoutDashboard,
-  TrendingUp,
-  TrendingDown,
   Info,
   FileSpreadsheet
 } from 'lucide-react';
@@ -41,7 +39,6 @@ export default function ImportarPage() {
     toast.success("Modelo baixado com sucesso!");
   };
 
-  // CORREÇÃO AQUI: HTMLInputElement em vez de INPUTElement
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
@@ -71,6 +68,7 @@ export default function ImportarPage() {
       
       toast.success("Importação concluída com sucesso!");
       setFile(null);
+      // Limpar o input file visualmente se necessário, mas o setFile(null) já reseta o estado
     } catch (error: any) {
       console.error(error);
       toast.error("Erro na importação. Verifique o arquivo.");
@@ -83,26 +81,8 @@ export default function ImportarPage() {
     <div className="flex min-h-screen bg-[#F1F5F9] text-slate-900 font-sans text-sm">
       <Toaster position="top-right" />
       
-      <aside className="w-64 bg-[#0F172A] text-white hidden lg:flex flex-col sticky top-0 h-screen shadow-2xl">
-        <div className="p-5 border-b border-slate-800">
-          <h1 className="text-xl font-black tracking-tighter italic text-blue-500">HORIZON <span className="text-white">AJ</span></h1>
-        </div>
-        
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          <Link href="/" className="flex items-center w-full px-4 py-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg transition-all group">
-            <LayoutDashboard size={18} className="mr-3 group-hover:text-blue-400" /> Dashboard
-          </Link>
-          <button className="flex items-center w-full px-4 py-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg transition-all group">
-            <TrendingUp size={18} className="mr-3 group-hover:text-green-400" /> Receitas
-          </button>
-          <button className="flex items-center w-full px-4 py-2 text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg transition-all group">
-            <TrendingDown size={18} className="mr-3 group-hover:text-red-400" /> Despesas
-          </button>
-          <div className="flex items-center w-full px-4 py-2 bg-blue-600 rounded-lg text-white font-semibold shadow-lg shadow-blue-900/40 border-t border-slate-800 pt-4 mt-4">
-            <FileUp size={18} className="mr-3" /> Importar Dados
-          </div>
-        </nav>
-      </aside>
+      {/* SIDEBAR REUTILIZÁVEL */}
+      <Sidebar />
 
       <main className="flex-1 p-6 lg:p-12 overflow-y-auto flex flex-col items-center">
         <div className="w-full max-w-3xl">
@@ -143,6 +123,7 @@ export default function ImportarPage() {
             </button>
           </div>
 
+          {/* ÁREA DE INSTRUÇÕES */}
           <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-8 border-b border-slate-50 flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">

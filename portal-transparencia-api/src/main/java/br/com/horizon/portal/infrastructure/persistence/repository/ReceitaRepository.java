@@ -4,15 +4,18 @@ import br.com.horizon.portal.infrastructure.persistence.entity.ReceitaEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Repository
-public interface ReceitaRepository extends JpaRepository<ReceitaEntity, Long> {
+public interface ReceitaRepository extends JpaRepository<ReceitaEntity, Long>, JpaSpecificationExecutor<ReceitaEntity> {
 
-    // 1. Busca todas as receitas de um ano específico (com paginação para não travar o banco)
+    // 1. Busca todas as receitas de um ano específico (com paginação para não
+    // travar o banco)
     // O Spring gera: SELECT * FROM tb_receita WHERE exercicio = ?
     Page<ReceitaEntity> findByExercicio(Integer exercicio, Pageable pageable);
 
@@ -23,8 +26,13 @@ public interface ReceitaRepository extends JpaRepository<ReceitaEntity, Long> {
     // IgnoreCase faz buscar tanto "iptu" quanto "IPTU"
     Page<ReceitaEntity> findByOrigemContainingIgnoreCase(String termo, Pageable pageable);
 
-    // 4. Query Personalizada: Soma total arrecadada no ano (Para o Dashboard Inicial)
+    // 4. Query Personalizada: Soma total arrecadada no ano (Para o Dashboard
+    // Inicial)
     // COALESCE garante que se não tiver nada, retorna 0 em vez de null
     @Query("SELECT COALESCE(SUM(r.valorArrecadado), 0) FROM ReceitaEntity r WHERE r.exercicio = :exercicio")
     BigDecimal totalArrecadadoPorAno(Integer exercicio);
+
+    @Query("SELECT DISTINCT r.exercicio FROM ReceitaEntity r ORDER BY r.exercicio DESC")
+    List<Integer> findDistinctExercicios();
+
 }
