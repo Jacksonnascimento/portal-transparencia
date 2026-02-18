@@ -1,0 +1,5 @@
+exercicio;mes;data_lancamento;categoria_economica;origem;especie;rubrica;alinea;fonte_recursos;valor_previsto_inicial;valor_previsto_atualizado;valor_arrecadado;historico
+2025;1;10/01/2025;Receitas Correntes;Impostos;Impostos sobre o Patrimônio;IPTU;Principal;1500 - Recursos Ordinários (Livre);1000000,00;1000000,00;15450,90;Recebimento referente a cota única do IPTU exercício 2025 com desconto de antecipação.
+2025;1;15/01/2025;Receitas Correntes;Impostos;Impostos sobre Serviços;ISSQN;Principal;1500 - Recursos Ordinários (Livre);500000,00;500000,00;2340,50;Arrecadação de ISSQN referente a notas fiscais de serviços tomados no período.
+2025;2;05/02/2025;Receitas Correntes;Transferências Correntes;Transferências da União;FPM;Cota Mensal;1700 - Transf. de Convênios da União;8000000,00;8000000,00;450000,00;Repasse do primeiro decêndio do Fundo de Participação dos Municípios (FPM).
+2026;1;20/01/2026;Receitas de Capital;Alienação de Bens;Bens Móveis;Veículos;Leilão 01/2026;1755 - Alienação de Bens;50000,00;50000,00;12500,00;Valor arrecadado referente ao lote 04 do leilão de veículos inservíveis da frota municipal.

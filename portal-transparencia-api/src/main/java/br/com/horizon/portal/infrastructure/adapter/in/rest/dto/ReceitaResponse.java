@@ -1,47 +1,53 @@
 package br.com.horizon.portal.infrastructure.adapter.in.rest.dto;
 
 import br.com.horizon.portal.infrastructure.persistence.entity.ReceitaEntity;
+import lombok.Builder;
 import lombok.Data;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
+@Builder
 public class ReceitaResponse {
 
-    // Adicionamos os campos que faltavam (ID e Exercício)
     private Long id;
     private Integer exercicio;
     private Integer mes;
+    private LocalDate dataLancamento;
     
-    // Campos de negócio
-    private String categoria;
+    // Classificação
+    private String categoriaEconomica;
     private String origem;
+    private String especie;
+    private String rubrica;
+    private String alinea;
+    
     private String fonteRecursos;
     
-    // IMPORTANTE: Mudei de 'data' para 'dataLancamento' para facilitar a ordenação no front
-    private LocalDate dataLancamento; 
-    
+    // Valores Orçamentários e Financeiros
+    private BigDecimal valorPrevistoInicial;
+    private BigDecimal valorPrevistoAtualizado;
     private BigDecimal valorArrecadado;
+    
+    private String historico;
 
-    // Construtor estático (Converter Entity -> DTO)
     public static ReceitaResponse fromEntity(ReceitaEntity entity) {
-        ReceitaResponse dto = new ReceitaResponse();
-        
-        dto.setId(entity.getId());
-        dto.setExercicio(entity.getExercicio());
-        
-        // CORREÇÃO AQUI: Trocado 'item' por 'entity'
-        dto.setMes(entity.getMes()); 
-        
-        dto.setCategoria(entity.getCategoriaEconomica());
-        dto.setOrigem(entity.getOrigem());
-        dto.setFonteRecursos(entity.getFonteRecursos());
-        
-        // Mapeando a data corretamente
-        dto.setDataLancamento(entity.getDataLancamento());
-        
-        dto.setValorArrecadado(entity.getValorArrecadado());
-        
-        return dto;
+        return ReceitaResponse.builder()
+                .id(entity.getId())
+                .exercicio(entity.getExercicio())
+                .mes(entity.getMes())
+                .dataLancamento(entity.getDataLancamento())
+                .categoriaEconomica(entity.getCategoriaEconomica())
+                .origem(entity.getOrigem())
+                .especie(entity.getEspecie())
+                .rubrica(entity.getRubrica())
+                .alinea(entity.getAlinea())
+                .fonteRecursos(entity.getFonteRecursos())
+                .valorPrevistoInicial(entity.getValorPrevistoInicial())
+                .valorPrevistoAtualizado(entity.getValorPrevistoAtualizado())
+                .valorArrecadado(entity.getValorArrecadado())
+                .historico(entity.getHistorico())
+                .build();
     }
 }

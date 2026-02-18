@@ -1,55 +1,69 @@
 package br.com.horizon.portal.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "tb_receita")
-@Data // Lombok: Gera Getters, Setters, Equals, HashCode automaticamente
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class ReceitaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // --- Dados Temporais ---
     @Column(nullable = false)
-    private Integer exercicio; // Ano (ex: 2025)
+    private Integer exercicio; // Ano (2025)
 
     @Column(nullable = false)
-    private Integer mes;
+    private Integer mes; // Mês (1 a 12)
 
-    @Column(name = "data_lancamento")
+    @Column(name = "data_lancamento", nullable = false)
     private LocalDate dataLancamento;
 
-    // Classificação Orçamentária
-    @Column(name = "categoria_economica", nullable = false)
-    private String categoriaEconomica;
+    // --- Classificação Orçamentária (A Árvore Contábil) ---
+    
+    @Column(name = "categoria_economica", nullable = false, length = 100)
+    private String categoriaEconomica; // Ex: Receitas Correntes
 
-    @Column(nullable = false)
-    private String origem;
+    @Column(nullable = false, length = 100)
+    private String origem; // Ex: Impostos, Taxas
 
-    private String especie;
-    private String rubrica;
-    private String alinea;
+    @Column(length = 150)
+    private String especie; // Ex: Impostos sobre o Patrimônio
 
-    @Column(name = "fonte_recursos", nullable = false)
-    private String fonteRecursos;
+    @Column(length = 150)
+    private String rubrica; // Ex: IPTU
 
-    // Valores Monetários (BigDecimal é obrigatório para dinheiro)
-    @Column(name = "valor_previsto_inicial")
-    private BigDecimal valorPrevistoInicial;
+    @Column(length = 150)
+    private String alinea; // Ex: IPTU - Principal
 
-    @Column(name = "valor_previsto_atualizado")
-    private BigDecimal valorPrevistoAtualizado;
+    @Column(name = "fonte_recursos", nullable = false, length = 100)
+    private String fonteRecursos; // Ex: Recursos Ordinários (Fundamental para TCE)
 
-    @Column(name = "valor_arrecadado", nullable = false)
-    private BigDecimal valorArrecadado;
+    // --- Valores (Planejado vs Realizado) ---
 
+    @Column(name = "valor_previsto_inicial", precision = 19, scale = 2)
+    private BigDecimal valorPrevistoInicial; // O que estava na LOA
+
+    @Column(name = "valor_previsto_atualizado", precision = 19, scale = 2)
+    private BigDecimal valorPrevistoAtualizado; // O que vale hoje
+
+    @Column(name = "valor_arrecadado", nullable = false, precision = 19, scale = 2)
+    private BigDecimal valorArrecadado; // O dinheiro que entrou
+
+    // --- Transparência Ativa ---
+    
     @Column(columnDefinition = "TEXT")
-    private String historico;
+    private String historico; // Descrição detalhada do lançamento
 }
