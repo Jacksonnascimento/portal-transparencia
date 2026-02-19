@@ -59,7 +59,7 @@ CREATE INDEX idx_despesa_credor ON tb_despesa(credor_id);
 
 
 CREATE TABLE IF NOT EXISTS tb_usuario (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
     senha VARCHAR(255) NOT NULL,
