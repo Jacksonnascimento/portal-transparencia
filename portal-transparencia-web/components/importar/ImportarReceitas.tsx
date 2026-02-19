@@ -12,7 +12,8 @@ import {
   FileType,
   Loader2,
   TrendingUp,
-  FileCheck
+  FileCheck,
+  X
 } from 'lucide-react';
 
 export function ImportarReceitas() {
@@ -22,11 +23,11 @@ export function ImportarReceitas() {
   const [inputKey, setInputKey] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  // --- FUNÇÃO PARA LIMPAR TUDO (USADA NO CANCELAR E APÓS SUCESSO) ---
+  // --- FUNÇÃO PARA LIMPAR TUDO ---
   const handleCancel = () => {
     setFile(null);
     setStatus({ type: null, message: '' });
-    setInputKey(prev => prev + 1); // Isso "reseta" o input de arquivo no navegador
+    setInputKey(prev => prev + 1); // Reseta o input nativo
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -45,6 +46,8 @@ export function ImportarReceitas() {
     if (droppedFile && droppedFile.name.endsWith('.csv')) {
       setFile(droppedFile);
       setStatus({ type: null, message: '' });
+    } else {
+      setStatus({ type: 'error', message: 'Apenas arquivos .csv são permitidos.' });
     }
   };
 
@@ -56,7 +59,7 @@ export function ImportarReceitas() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'layout_receitas.csv');
+    link.setAttribute('download', 'layout_receitas_padrao.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -74,10 +77,10 @@ export function ImportarReceitas() {
       await api.post('/receitas/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setStatus({ type: 'success', message: 'Importação concluída com sucesso!' });
+      setStatus({ type: 'success', message: 'Importação processada com sucesso! Os dados já estão disponíveis.' });
       setFile(null); 
     } catch (error: any) {
-      setStatus({ type: 'error', message: 'Erro ao processar o arquivo CSV. Verifique o layout.' });
+      setStatus({ type: 'error', message: 'Falha na importação. Verifique se as colunas e o separador (;) estão corretos.' });
     } finally {
       setLoading(false);
       setInputKey(prev => prev + 1);
@@ -86,66 +89,74 @@ export function ImportarReceitas() {
 
   const colunasCartilha = [
     { campo: 'exercicio', obr: 'Sim', desc: 'Ano de referência (ex: 2025)' },
-    { campo: 'mes', obr: 'Sim', desc: 'Mês (1 a 12)' },
-    { campo: 'data_lancamento', obr: 'Sim', desc: 'Formato DD/MM/AAAA' },
+    { campo: 'mes', obr: 'Sim', desc: 'Mês numérico (1 a 12)' },
+    { campo: 'data_lancamento', obr: 'Sim', desc: 'DD/MM/AAAA' },
     { campo: 'categoria_economica', obr: 'Sim', desc: 'Ex: Receitas Correntes' },
     { campo: 'origem', obr: 'Sim', desc: 'Ex: Impostos, Taxas' },
     { campo: 'especie', obr: 'Não', desc: 'Detalhamento da Origem' },
     { campo: 'rubrica', obr: 'Não', desc: 'Ex: IPTU, ISSQN' },
     { campo: 'alinea', obr: 'Não', desc: 'Ex: Principal, Multas' },
-    { campo: 'fonte_recursos', obr: 'Sim', desc: 'Código e Nome da Fonte' },
-    { campo: 'valor_previsto_inicial', obr: 'Não', desc: 'Valor fixado na LOA' },
+    { campo: 'fonte_recursos', obr: 'Sim', desc: 'Código/Nome da Fonte' },
+    { campo: 'valor_previsto_inicial', obr: 'Não', desc: 'Valor LOA (Use vírgula)' },
     { campo: 'valor_previsto_atualizado', obr: 'Não', desc: 'Previsão ajustada' },
-    { campo: 'valor_arrecadado', obr: 'Sim', desc: 'Valor recebido (Use vírgula)' },
-    { campo: 'historico', obr: 'Não', desc: 'Descrição do lançamento' },
+    { campo: 'valor_arrecadado', obr: 'Sim', desc: 'Valor real (Use vírgula)' },
+    { campo: 'historico', obr: 'Não', desc: 'Descrição detalhada' },
   ];
 
   return (
+    // ADICIONADO 'relative' PARA CONTER O DRAG OVERLAY
     <div 
-      className="w-full"
+      className="w-full relative"
       onDragEnter={handleDrag}
       onDragOver={handleDrag}
       onDragLeave={handleDrag}
       onDrop={handleDrop}
     >
-      {/* 🟦 OVERLAY DE DRAG (O aviso visual de "Solte aqui") */}
+      {/* 🟦 OVERLAY DE DRAG CORRIGIDO */}
       {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-600/10 backdrop-blur-sm border-4 border-dashed border-blue-400 rounded-2xl pointer-events-none">
-          <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center">
-            <UploadCloud size={48} className="text-blue-600 animate-bounce" />
-            <span className="mt-2 font-bold text-blue-700 uppercase text-xs tracking-widest">Solte o arquivo aqui</span>
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/10 backdrop-blur-sm border-4 border-dashed border-slate-400 rounded-2xl pointer-events-none transition-all">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-bounce">
+            <UploadCloud size={48} className="text-slate-900" />
+            <span className="mt-4 font-black text-slate-900 uppercase text-sm tracking-widest">Solte o arquivo CSV aqui</span>
           </div>
         </div>
       )}
 
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <TrendingUp className="text-green-600" /> Carga de Receitas Públicas
+      <div className="mb-8 border-b border-slate-200 pb-4">
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+          <div className="p-2 bg-black text-white rounded-lg">
+            <TrendingUp size={24} />
+          </div>
+          Carga de Receitas Públicas
         </h2>
+        <p className="text-slate-500 text-sm mt-1 ml-12">Importação em lote via arquivo CSV padronizado.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* COLUNA DE AÇÃO */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
-            <h3 className="font-bold text-slate-600 flex items-center gap-2 mb-4 text-xs uppercase tracking-widest">
-              <FileSpreadsheet size={18} /> 1. Preparar Arquivo
+          
+          {/* PASSO 1 */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 text-xs uppercase tracking-widest">
+              <FileSpreadsheet size={16} className="text-slate-400" /> 1. Obter Layout
             </h3>
             <button 
               onClick={handleDownloadModel}
-              className="w-full bg-white border-2 border-blue-200 text-blue-600 font-bold py-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-sm"
+              className="w-full bg-slate-50 border border-slate-300 text-slate-700 font-bold py-3 rounded-lg hover:bg-slate-100 hover:border-slate-400 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wide"
             >
               <Download size={16} /> Baixar Modelo .CSV
             </button>
           </div>
 
-          <div className="bg-white border-2 border-slate-100 rounded-2xl p-6 shadow-md">
+          {/* PASSO 2 */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-lg">
             <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 text-xs uppercase tracking-widest">
-              <UploadCloud size={18} /> 2. Selecionar CSV
+              <UploadCloud size={16} className="text-slate-400" /> 2. Upload do Arquivo
             </h3>
             
-            <div className={`border-2 border-dashed rounded-xl p-10 text-center relative transition-all ${file ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}>
+            <div className={`border-2 border-dashed rounded-xl p-8 text-center relative transition-all group ${file ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'}`}>
               <input 
                 key={inputKey}
                 type="file" 
@@ -156,72 +167,80 @@ export function ImportarReceitas() {
                 }} 
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
               />
-              <FileType size={40} className={`mx-auto mb-2 ${file ? 'text-blue-600' : 'text-slate-300'}`} />
-              <p className="text-xs font-bold text-slate-500 truncate px-2">
-                {file ? file.name : "Arraste ou clique para selecionar"}
+              <FileType size={32} className={`mx-auto mb-3 transition-colors ${file ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+              <p className="text-xs font-bold text-slate-600 truncate px-2">
+                {file ? file.name : "Clique ou arraste o CSV aqui"}
               </p>
             </div>
 
-            {/* CARD DE CONFIRMAÇÃO COM BOTÃO AZUL */}
+            {/* AÇÕES DE UPLOAD */}
             {file && (
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl animate-in zoom-in-95">
-                <div className="flex items-center gap-2 text-blue-700 font-bold text-xs mb-4">
-                  <FileCheck size={16} /> Arquivo detectado com sucesso
+              <div className="mt-6 animate-in zoom-in-95 space-y-3">
+                <div className="p-3 bg-emerald-100/50 rounded-lg flex items-center gap-2 text-emerald-800 font-bold text-xs border border-emerald-200">
+                  <FileCheck size={16} /> Arquivo pronto para carga
                 </div>
                 
                 <button 
                   onClick={handleUpload}
                   disabled={loading}
-                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
+                  className="w-full py-3 bg-black hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
                 >
-                  {loading ? <Loader2 size={18} className="animate-spin" /> : <TrendingUp size={18} />}
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
                   {loading ? "Processando..." : "Iniciar Importação"}
                 </button>
                 
                 <button 
                   onClick={handleCancel}
-                  className="w-full mt-2 py-2 text-slate-400 hover:text-red-500 text-[10px] font-bold uppercase transition-colors"
+                  className="w-full py-2 text-slate-400 hover:text-red-600 text-[10px] font-bold uppercase transition-colors flex items-center justify-center gap-1"
                 >
-                  Cancelar e trocar arquivo
+                  <X size={12} /> Cancelar seleção
                 </button>
               </div>
             )}
 
+            {/* MENSAGENS DE STATUS */}
             {status.message && (
-              <div className={`mt-4 p-4 rounded-xl text-xs font-bold flex items-center gap-2 border-2 ${
-                status.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
+              <div className={`mt-4 p-4 rounded-xl text-xs font-bold flex items-start gap-2 border animate-in slide-in-from-top-2 ${
+                status.type === 'success' 
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                  : 'bg-red-50 border-red-200 text-red-800'
               }`}>
-                {status.type === 'success' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
-                {status.message}
+                {status.type === 'success' ? <CheckCircle size={16} className="shrink-0 mt-0.5" /> : <AlertTriangle size={16} className="shrink-0 mt-0.5" />}
+                <span className="leading-relaxed">{status.message}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* DICIONÁRIO (13 CAMPOS) */}
+        {/* DICIONÁRIO DE DADOS */}
         <div className="lg:col-span-2">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden h-full">
-            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-              <Info size={18} className="text-slate-400" />
-              <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wider">Dicionário de Dados</h3>
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden h-full flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Info size={18} className="text-slate-400" />
+                <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Regras de Preenchimento</h3>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-1 rounded border border-slate-200">SEPARADOR: PONTO E VÍRGULA (;)</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="flex-1 overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase border-b border-slate-200">
+                <thead className="bg-white text-[10px] font-black text-slate-500 uppercase border-b border-slate-200">
                   <tr>
-                    <th className="px-6 py-4">Coluna</th>
-                    <th className="px-4 py-4 text-center">Obrig.</th>
-                    <th className="px-6 py-4">Descrição</th>
+                    <th className="px-6 py-3 w-1/4">Coluna (Header)</th>
+                    <th className="px-4 py-3 text-center w-24">Obrig.</th>
+                    <th className="px-6 py-3">Descrição Técnica e Formato</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-[11px]">
+                <tbody className="divide-y divide-slate-50 text-[11px]">
                   {colunasCartilha.map((col, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-3 font-mono font-bold text-slate-700">{col.campo}</td>
-                      <td className="px-4 py-3 text-center">
-                        {col.obr === 'Sim' ? <span className="text-red-500 font-black">SIM</span> : <span className="text-slate-300 font-bold uppercase">OPC</span>}
+                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
+                      <td className="px-6 py-2.5 font-mono font-bold text-slate-700 group-hover:text-black">{col.campo}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        {col.obr === 'Sim' 
+                          ? <span className="text-red-600 font-black bg-red-50 px-1.5 py-0.5 rounded text-[9px]">SIM</span> 
+                          : <span className="text-slate-300 font-bold text-[9px]">NÃO</span>}
                       </td>
-                      <td className="px-6 py-3 text-slate-500 italic">{col.desc}</td>
+                      <td className="px-6 py-2.5 text-slate-500 font-medium">{col.desc}</td>
                     </tr>
                   ))}
                 </tbody>

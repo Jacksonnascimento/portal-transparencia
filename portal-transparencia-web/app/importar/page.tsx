@@ -12,74 +12,73 @@ import {
 } from 'lucide-react';
 
 export default function ImportarPage() {
-  // Estado para controlar qual aba está ativa ('receitas' é o padrão)
   const [activeTab, setActiveTab] = useState<'receitas' | 'despesas' | 'folha' | 'contratos'>('receitas');
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] text-slate-900 font-sans text-sm">
       <Sidebar />
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-8 overflow-y-auto relative">
         
         {/* TÍTULO DA CENTRAL DE CARGAS */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Central de Cargas e Importação</h1>
-          <p className="text-slate-500 mt-1">
-            Selecione o módulo abaixo para alimentar a base de dados do Portal da Transparência.
+          <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Central de Cargas</h1>
+          <p className="text-slate-500 mt-1 font-medium">
+            Ingestão massiva de dados para o Portal da Transparência.
           </p>
         </div>
 
         {/* --- NAVEGAÇÃO DE ABAS (TABS) --- */}
-        <div className="flex flex-wrap border-b border-slate-200 mb-8">
+        <div className="flex flex-wrap border-b border-slate-200 mb-8 bg-white rounded-t-xl px-2">
           
           {/* Aba Receitas (Ativa) */}
           <button
             onClick={() => setActiveTab('receitas')}
-            className={`flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-all ${
+            className={`flex items-center gap-2 px-6 py-4 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
               activeTab === 'receitas'
-                ? 'border-green-500 text-green-700 bg-green-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                ? 'border-black text-black'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
             }`}
           >
-            <TrendingUp size={18} />
+            <TrendingUp size={16} />
             Receitas
           </button>
 
-          {/* Aba Despesas (Futura) */}
+          {/* Aba Despesas */}
           <button
             onClick={() => setActiveTab('despesas')}
-            className={`flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-all ${
+            className={`flex items-center gap-2 px-6 py-4 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
               activeTab === 'despesas'
-                ? 'border-red-500 text-red-700 bg-red-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                ? 'border-black text-black'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
             }`}
           >
-            <TrendingDown size={18} />
+            <TrendingDown size={16} />
             Despesas
           </button>
 
-          {/* Aba Folha (Futura) */}
+          {/* Aba Folha */}
           <button
             onClick={() => setActiveTab('folha')}
-            className={`flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-all ${
+            className={`flex items-center gap-2 px-6 py-4 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
               activeTab === 'folha'
-                ? 'border-blue-500 text-blue-700 bg-blue-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                ? 'border-black text-black'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
             }`}
           >
-            <Users size={18} />
-            Folha de Pagamento
+            <Users size={16} />
+            Pessoal (RH)
           </button>
 
-           {/* Aba Contratos (Futura) */}
+           {/* Aba Contratos */}
            <button
             onClick={() => setActiveTab('contratos')}
-            className={`flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-all ${
+            className={`flex items-center gap-2 px-6 py-4 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
               activeTab === 'contratos'
-                ? 'border-purple-500 text-purple-700 bg-purple-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                ? 'border-black text-black'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
             }`}
           >
-            <FileText size={18} />
+            <FileText size={16} />
             Contratos
           </button>
         </div>
@@ -94,20 +93,16 @@ export default function ImportarPage() {
           {activeTab === 'despesas' && (
             <EmptyState 
               title="Módulo de Despesas" 
-              desc="A importação de empenhos, liquidações e pagamentos estará disponível na próxima atualização do sistema."
-              color="text-red-600"
-              bgColor="bg-red-50"
-              borderColor="border-red-200"
+              desc="A importação de empenhos, liquidações e pagamentos estará disponível na próxima atualização."
+              icon={<TrendingDown size={48} className="text-slate-300 mb-4" />}
             />
           )}
 
           {activeTab === 'folha' && (
             <EmptyState 
-              title="Módulo de Pessoal (RH)" 
-              desc="A importação da folha de pagamento de servidores ativos e inativos em desenvolvimento."
-              color="text-blue-600"
-              bgColor="bg-blue-50"
-              borderColor="border-blue-200"
+              title="Módulo de Pessoal" 
+              desc="A importação da folha de pagamento de servidores ativos e inativos está em desenvolvimento."
+              icon={<Users size={48} className="text-slate-300 mb-4" />}
             />
           )}
 
@@ -115,9 +110,7 @@ export default function ImportarPage() {
              <EmptyState 
              title="Licitações e Contratos" 
              desc="Módulo destinado à carga de processos licitatórios e gestão de contratos administrativos."
-             color="text-purple-600"
-             bgColor="bg-purple-50"
-             borderColor="border-purple-200"
+             icon={<FileText size={48} className="text-slate-300 mb-4" />}
            />
           )}
 
@@ -127,17 +120,17 @@ export default function ImportarPage() {
   );
 }
 
-// Pequeno componente para mostrar "Em Breve" nas outras abas
-function EmptyState({ title, desc, color, bgColor, borderColor }: any) {
+// Componente EmptyState Padronizado (Sem cores fortes, focado no Clean Design)
+function EmptyState({ title, desc, icon }: any) {
   return (
-    <div className={`flex flex-col items-center justify-center p-12 rounded-xl border-2 border-dashed ${borderColor} ${bgColor} animate-in fade-in zoom-in-95`}>
-      <AlertCircle size={48} className={`mb-4 ${color} opacity-50`} />
-      <h3 className={`text-xl font-bold ${color} mb-2`}>{title}</h3>
-      <p className="text-slate-500 max-w-md text-center">
+    <div className="flex flex-col items-center justify-center p-16 rounded-3xl border-2 border-dashed border-slate-200 bg-white animate-in fade-in zoom-in-95">
+      {icon}
+      <h3 className="text-xl font-bold text-slate-800 mb-2">{title}</h3>
+      <p className="text-slate-500 max-w-md text-center text-sm mb-6">
         {desc}
       </p>
-      <span className="mt-6 px-4 py-2 bg-white rounded-full text-xs font-bold text-slate-400 border border-slate-200 shadow-sm uppercase tracking-wide">
-        Em Desenvolvimento
+      <span className="px-4 py-1.5 bg-slate-100 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
+        Em Breve
       </span>
     </div>
   );

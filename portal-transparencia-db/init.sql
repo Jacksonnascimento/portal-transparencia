@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS tb_receita (
     valor_previsto_inicial DECIMAL(19,2),
     valor_previsto_atualizado DECIMAL(19,2),
     valor_arrecadado DECIMAL(19,2) NOT NULL,
-    historico TEXT
+    historico TEXT,
+	data_importacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 3. Tabela de Despesas
@@ -55,3 +56,26 @@ CREATE TABLE IF NOT EXISTS tb_despesa (
 CREATE INDEX idx_receita_exercicio ON tb_receita(exercicio);
 CREATE INDEX idx_despesa_exercicio ON tb_despesa(exercicio);
 CREATE INDEX idx_despesa_credor ON tb_despesa(credor_id);
+
+
+CREATE TABLE IF NOT EXISTS tb_usuario (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(150) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    senha VARCHAR(255) NOT NULL,
+    role VARCHAR(50) DEFAULT 'ADMIN',
+    ativo BOOLEAN DEFAULT TRUE,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Inserção do Administrador Padrão
+-- A senha abaixo é o hash BCrypt válido para "admin123"
+INSERT INTO tb_usuario (nome, email, senha, role, ativo) 
+VALUES (
+    'Administrador do Sistema', 
+    'admin@horizon.com.br', 
+    '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIvi', 
+    'ADMIN', 
+    TRUE
+)
+ON CONFLICT (email) DO NOTHING;
