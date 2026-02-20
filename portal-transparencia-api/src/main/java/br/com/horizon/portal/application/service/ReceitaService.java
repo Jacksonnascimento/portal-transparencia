@@ -3,6 +3,7 @@ package br.com.horizon.portal.application.service;
 import br.com.horizon.portal.infrastructure.audit.LogAuditoriaEvent;
 import br.com.horizon.portal.infrastructure.persistence.entity.ReceitaEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.ReceitaRepository;
+import com.fasterxml.jackson.databind.ObjectMapper; // Importado para serialização
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -27,15 +28,14 @@ import java.util.List;
 public class ReceitaService {
 
     private final ReceitaRepository repository;
-    private final ApplicationEventPublisher eventPublisher; // INJETADO PARA AUDITORIA
-    
-    // Formato padrão brasileiro para datas
+    private final ApplicationEventPublisher eventPublisher;
+    private final ObjectMapper objectMapper; // Necessário para salvar o "item a item" no log
+
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     @Transactional
     public void importarArquivoCsv(MultipartFile file) {
         long startTime = System.currentTimeMillis();
-        // Geramos o ID do lote logo no início para carimbar as entidades e o log
         String loteId = "LOTE-" + startTime;
 
         log.info("Iniciando importação robusta de receitas. ID do Lote: {}...", loteId);
@@ -46,25 +46,19 @@ public class ReceitaService {
         try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             
             String linha;
-            // Pula o cabeçalho
-            br.readLine(); 
+            br.readLine(); // Pula cabeçalho
 
             while ((linha = br.readLine()) != null) {
                 linhaAtual++;
-                
-                // Ignora linhas em branco
                 if (linha.trim().isEmpty()) continue;
 
-                // Divide por ponto e vírgula (padrão mais seguro que vírgula)
                 String[] dados = linha.split(";", -1);
 
-                // Validação de Estrutura: Deve ter 13 colunas conforme layout
                 if (dados.length < 13) {
                     throw new IllegalArgumentException("Erro na linha " + linhaAtual + ": Número de colunas insuficiente. Esperado 13.");
                 }
 
                 try {
-                    // Passamos o loteId para que cada entidade seja "carimbada"
                     ReceitaEntity receita = montarReceita(dados, loteId);
                     receitasParaSalvar.add(receita);
                 } catch (Exception e) {
@@ -72,10 +66,8 @@ public class ReceitaService {
                 }
             }
 
-            // Salva em lote (Batch) para performance
             repository.saveAll(receitasParaSalvar);
             
-            // --- GATILHO DE AUDITORIA ---
             String resumoImportacao = "Foram importados " + receitasParaSalvar.size() + " registros vinculados ao lote: " + loteId;
             eventPublisher.publishEvent(new LogAuditoriaEvent(
                     "IMPORTACAO_LOTE_CSV",
@@ -95,67 +87,64 @@ public class ReceitaService {
     }
 
     /**
-     * Remove todas as receitas vinculadas a um lote específico e registra na auditoria.
-     * Captura os dados existentes antes da exclusão para permitir auditoria detalhada.
+     * Remove todas as receitas vinculadas a um lote e registra o estado anterior no log.
      */
     @Transactional
     public void excluirLote(String loteId) {
-        // 1. Buscar os registros que serão excluídos para compor o log de auditoria (Dados Anteriores)
+        log.info("Iniciando processo de revogação para o lote: {}", loteId);
+
+        // 1. Buscar os registros que serão excluídos
         List<ReceitaEntity> receitasParaExcluir = repository.findByIdImportacao(loteId);
         
         if (receitasParaExcluir.isEmpty()) {
+            log.error("Falha ao desfazer: Lote {} não possui registros no banco.", loteId);
             throw new IllegalArgumentException("Lote não encontrado ou já excluído: " + loteId);
         }
 
-        int totalRegistros = receitasParaExcluir.size();
+        try {
+            // 2. Serializar a lista para JSON antes de deletar
+            // Isso garante que o LogAuditoriaListener tenha os dados prontos para salvar
+            String jsonDadosExcluidos = objectMapper.writeValueAsString(receitasParaExcluir);
 
-        // 2. Registrar o rastro na Auditoria (Rollback) enviando a lista para o campo dadosAnteriores
-        eventPublisher.publishEvent(new LogAuditoriaEvent(
-                "EXCLUSAO_LOTE_RECEITA",
-                "RECEITA",
-                loteId,
-                receitasParaExcluir, // Agora passamos a lista completa para o log ver "item a item"
-                "Operação de revogação de lote executada. Total de itens removidos: " + totalRegistros
-        ));
+            // 3. Registrar a Auditoria passando o JSON no campo dadosAnteriores
+            eventPublisher.publishEvent(new LogAuditoriaEvent(
+                    "EXCLUSAO_LOTE_RECEITA",
+                    "RECEITA",
+                    loteId,
+                    jsonDadosExcluidos, // O JSON vai como String para o log
+                    "Revogação total do lote executada. Itens removidos: " + receitasParaExcluir.size()
+            ));
 
-        // 3. Executar a exclusão massiva no banco
-        repository.deleteByIdImportacao(loteId);
+            // 4. Excluir do banco
+            repository.deleteByIdImportacao(loteId);
+            log.info("Lote {} removido com sucesso. {} registros apagados.", loteId, receitasParaExcluir.size());
 
-        log.info("Rollback concluído: Lote {} removido com sucesso ({} registros afetados).", loteId, totalRegistros);
+        } catch (Exception e) {
+            log.error("Erro técnico ao gerar log de exclusão para o lote {}", loteId, e);
+            throw new RuntimeException("Falha ao processar auditoria de exclusão.");
+        }
     }
 
     private ReceitaEntity montarReceita(String[] dados, String loteId) {
         ReceitaEntity entity = new ReceitaEntity();
-
         entity.setIdImportacao(loteId);
 
-        // 0: Exercicio
         entity.setExercicio(Integer.parseInt(limparTexto(dados[0])));
-        // 1: Mês
         entity.setMes(Integer.parseInt(limparTexto(dados[1])));
-        // 2: Data Lançamento
         entity.setDataLancamento(parseData(dados[2]));
-        // 3: Categoria Econômica
         entity.setCategoriaEconomica(validarObrigatorio(dados[3], "Categoria Econômica"));
-        // 4: Origem
         entity.setOrigem(validarObrigatorio(dados[4], "Origem"));
-        // 5: Espécie
         entity.setEspecie(limparTexto(dados[5]));
-        // 6: Rubrica
         entity.setRubrica(limparTexto(dados[6]));
-        // 7: Alínea
         entity.setAlinea(limparTexto(dados[7]));
-        // 8: Fonte de Recursos
         entity.setFonteRecursos(validarObrigatorio(dados[8], "Fonte de Recursos"));
-        // 9: Valor Previsto Inicial
         entity.setValorPrevistoInicial(parseMoeda(dados[9]));
-        // 10: Valor Previsto Atualizado
         entity.setValorPrevistoAtualizado(parseMoeda(dados[10]));
-        // 11: Valor Arrecadado
+        
         BigDecimal arrecadado = parseMoeda(dados[11]);
         if (arrecadado == null) throw new IllegalArgumentException("Valor Arrecadado não pode ser nulo");
         entity.setValorArrecadado(arrecadado);
-        // 12: Histórico
+        
         entity.setHistorico(limparTexto(dados[12]));
 
         return entity;

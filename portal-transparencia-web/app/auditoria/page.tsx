@@ -13,10 +13,8 @@ import {
   Trash2,
   AlertTriangle,
   Eye,
-  FileText,
   ShieldCheck,
-  CheckCircle,
-  Database
+  CheckCircle
 } from 'lucide-react';
 
 // --- INTERFACES ---
@@ -81,6 +79,22 @@ export default function AuditoriaPage() {
     return new Date(val).toLocaleString('pt-BR');
   };
 
+  // Função Blindada para parse de JSON (Evita erro "map is not a function")
+  const parseDadosExcluidos = (jsonString?: string) => {
+    if (!jsonString) return [];
+    try {
+      let parsed = JSON.parse(jsonString);
+      // Desfaz dupla serialização se houver
+      if (typeof parsed === 'string') {
+        parsed = JSON.parse(parsed);
+      }
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("Erro ao ler JSON da auditoria:", e);
+      return [];
+    }
+  };
+
   // Identifica lotes desfeitos para esconder o botão na interface
   const lotesJaExcluidos = new Set(
     data?.content.filter(l => l.acao === 'EXCLUSAO_LOTE_RECEITA').map(l => l.entidadeId)
@@ -108,7 +122,7 @@ export default function AuditoriaPage() {
             <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Trilha de Auditoria</h2>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Horizon AJ • Monitoramento de Integridade LRF</p>
           </div>
-          <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl border border-emerald-100 flex items-center gap-2">
+          <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl border border-emerald-100 flex items-center gap-2 shadow-sm">
             <ShieldCheck size={16} />
             <span className="text-[10px] font-black uppercase tracking-widest">Ambiente Monitorado</span>
           </div>
@@ -157,7 +171,6 @@ export default function AuditoriaPage() {
                         <button className="p-1.5 text-slate-300 hover:text-black rounded transition-all" title="Ver Detalhes">
                           <Eye size={18} />
                         </button>
-                        {/* REGRA: Esconde o botão se o lote já estiver na lista de desfeitos */}
                         {log.acao === "IMPORTACAO_LOTE_CSV" && !lotesJaExcluidos.has(log.entidadeId) && (
                           <button 
                             onClick={(e) => { e.stopPropagation(); setLoteParaExcluir(log.entidadeId); }}
@@ -189,7 +202,7 @@ export default function AuditoriaPage() {
         </div>
       </main>
 
-      {/* --- MODAL DE DETALHES DA AUDITORIA (PADRÃO RECEITAS) --- */}
+      {/* --- MODAL DE DETALHES DA AUDITORIA --- */}
       {selectedLog && (
         <ModalPortal>
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -210,7 +223,6 @@ export default function AuditoriaPage() {
               </div>
               
               <div className="p-8 overflow-y-auto bg-white">
-                {/* Caso seja Exclusão, mostra a lista item a item */}
                 {selectedLog.acao === "EXCLUSAO_LOTE_RECEITA" && selectedLog.dadosAnteriores ? (
                   <div className="space-y-4">
                     <h4 className="text-xs font-bold text-red-700 uppercase tracking-widest border-l-4 border-red-600 pl-3">Itens Revogados do Sistema</h4>
@@ -225,10 +237,10 @@ export default function AuditoriaPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                          {JSON.parse(selectedLog.dadosAnteriores).map((item: any, idx: number) => (
+                          {parseDadosExcluidos(selectedLog.dadosAnteriores).map((item: any, idx: number) => (
                             <tr key={idx} className="hover:bg-red-50/30">
                               <td className="p-3">{item.exercicio}</td>
-                              <td className="p-3 font-mono">{item.dataLancamento}</td>
+                              <td className="p-3 font-mono">{formatDate(item.dataLancamento)}</td>
                               <td className="p-3 font-bold">{item.origem}</td>
                               <td className="p-3 text-right font-black text-red-600">
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valorArrecadado)}
@@ -271,7 +283,7 @@ export default function AuditoriaPage() {
         </ModalPortal>
       )}
 
-      {/* --- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO (PADRÃO HORIZON) --- */}
+      {/* --- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO --- */}
       {loteParaExcluir && (
         <ModalPortal>
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
