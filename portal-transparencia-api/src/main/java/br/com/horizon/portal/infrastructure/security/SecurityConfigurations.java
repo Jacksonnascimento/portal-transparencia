@@ -32,13 +32,16 @@ public class SecurityConfigurations {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> {
-                    // ROTAS PÚBLICAS (Login e visualização de receitas sem token, se for o caso)
+                    // ROTAS PÚBLICAS (Abertas para a internet sem token)
                     req.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll();
                     
-                    // Se quisermos que o Frontend veja a lista de receitas sem login, descomente a linha abaixo:
-                    // req.requestMatchers(HttpMethod.GET, "/api/v1/receitas/**").permitAll(); 
+                    // PORTAL DO CIDADÃO: Libera APENAS requisições de leitura (GET)
+                    // Qualquer tentativa de POST, PUT ou DELETE baterá na parede e exigirá token.
+                    req.requestMatchers(HttpMethod.GET, "/api/v1/receitas/**").permitAll(); 
+                    req.requestMatchers(HttpMethod.GET, "/api/v1/portal/**").permitAll(); 
                     
-                    // ROTAS PRIVADAS (Todas as outras)
+                    // ROTAS PRIVADAS E DE ADMINISTRAÇÃO (Bloqueadas por padrão)
+                    // Inclui POST/PUT/DELETE de receitas, e qualquer acesso a /auditoria e /usuarios
                     req.anyRequest().authenticated();
                 })
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
@@ -58,9 +61,15 @@ public class SecurityConfigurations {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Permite o Frontend local se comunicar com a API
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        
+        // CUIDADO COM O CORS: Lista de endereços permitidos para conversar com a API
+        configuration.setAllowedOrigins(List.of(
+            "http://localhost:3000", // A sua Retaguarda
+            "http://localhost:3001", // O Portal do seu sócio (Next.js)
+            "http://localhost:5173"  // O Portal do seu sócio (React/Vite)
+        ));
+        
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
