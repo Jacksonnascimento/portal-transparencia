@@ -15,12 +15,17 @@ export function Sidebar() {
   const pathname = usePathname();
 
   const handleLogout = () => {
-    // 1. Limpa TUDO: localStorage e sessionStorage
+    // 1. Limpeza de Estados Locais
     localStorage.clear();
     sessionStorage.clear();
     
-    // 2. Redirecionamento físico para quebrar o cache do Next.js
-    window.location.href = '/login';
+    // 2. Remoção do Cookie de Autenticação (horizon_token)
+    // Essencial para que o middleware.ts permita a estadia na página de login
+    document.cookie = "horizon_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+    // 3. Redirecionamento Físico com substituição de histórico
+    // Impede que o utilizador volte ao dashboard usando o botão "Voltar" do browser
+    window.location.replace('/login');
   };
 
   const menuItems = [
@@ -33,6 +38,7 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-[#0F172A] text-white hidden lg:flex flex-col sticky top-0 h-screen shadow-2xl z-50">
       
+      {/* Branding Horizon AJ */}
       <div className="p-5 border-b border-slate-800">
         <h1 className="text-xl font-black tracking-tighter italic text-blue-500">
           HORIZON <span className="text-white">AJ</span>
@@ -65,6 +71,7 @@ export function Sidebar() {
           );
         })}
 
+        {/* Separador e Link de Importação (Foco em LRF/LAI) */}
         <Link 
           href="/importar" 
           className={`
@@ -76,6 +83,7 @@ export function Sidebar() {
           Importar Dados
         </Link>
 
+        {/* Botão de Logout com Contraste Elevado */}
         <button 
           onClick={handleLogout}
           className="flex items-center w-full px-4 py-2 mt-4 text-red-400 hover:bg-red-950/30 hover:text-red-300 rounded-lg transition-all group font-bold text-xs uppercase"
@@ -85,6 +93,7 @@ export function Sidebar() {
         </button>
       </nav>
       
+      {/* Footer Institucional */}
       <div className="p-4 text-[10px] text-slate-500 text-center border-t border-slate-800 leading-relaxed">
         &copy; 2026 <a href="https://horizonaj.com.br/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 underline font-bold">Horizon AJ Desenvolvimento</a>. <br/> Todos os direitos reservados.
       </div>
