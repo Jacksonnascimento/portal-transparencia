@@ -64,9 +64,9 @@ public class SecurityConfigurations {
         
         // CUIDADO COM O CORS: Lista de endereços permitidos para conversar com a API
         configuration.setAllowedOrigins(List.of(
-            "http://localhost:3000", // A sua Retaguarda (Painel Admin)
-            "http://localhost:3001", // O Portal do seu sócio (Next.js)
-            "http://localhost:5173"  // O Portal do seu sócio (React/Vite)
+            "http://localhost:3000", // Retaguarda (Painel Admin)
+            "http://localhost:3001", //  (Next.js)
+            "http://localhost:5173"  // (React/Vite)
         ));
         
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
