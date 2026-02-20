@@ -17,6 +17,8 @@ import java.util.List;
 @Repository
 public interface ReceitaRepository extends JpaRepository<ReceitaEntity, Long>, JpaSpecificationExecutor<ReceitaEntity> {
 
+    long countByExercicio(Integer exercicio);
+
     Page<ReceitaEntity> findByExercicio(Integer exercicio, Pageable pageable);
 
     Page<ReceitaEntity> findByExercicioAndMes(Integer exercicio, Integer mes, Pageable pageable);

@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -26,8 +25,7 @@ public class PortalController {
     private final ReceitaRepository receitaRepository;
 
     /**
-     * DTO (Data Transfer Object) - O formato exato que será entregue ao Portal.
-     *
+     * DTO Público - Oculta IDs internos e dados de auditoria da Retaguarda.
      */
     public record ReceitaPublicaDTO(
             Integer exercicio,
@@ -39,7 +37,6 @@ public class PortalController {
             BigDecimal valorArrecadado,
             String historico
     ) {
-        // Construtor que converte a Entidade (do Banco) para o DTO (do Portal)
         public static ReceitaPublicaDTO fromEntity(ReceitaEntity entity) {
             return new ReceitaPublicaDTO(
                     entity.getExercicio(),
@@ -62,7 +59,6 @@ public class PortalController {
     public ResponseEntity<Page<ReceitaPublicaDTO>> listarReceitasPublicas(
             @PageableDefault(size = 20, sort = {"dataLancamento"}) Pageable pageable) {
         
-        // Busca as receitas e converte uma por uma para o formato seguro (DTO)
         Page<ReceitaPublicaDTO> page = receitaRepository.findAll(pageable)
                 .map(ReceitaPublicaDTO::fromEntity);
                 
@@ -72,7 +68,6 @@ public class PortalController {
     /**
      * ENDPOINT 2: Resumo para Dashboard (KPIs do Portal)
      * Rota: GET /api/v1/portal/receitas/resumo?ano=2024
-     * 
      */
     @GetMapping("/receitas/resumo")
     public ResponseEntity<Map<String, Object>> obterResumoPublico(
@@ -80,20 +75,16 @@ public class PortalController {
         
         int anoFiltro = (ano != null) ? ano : LocalDate.now().getYear();
 
-        // Traz todas as receitas do ano para somar (idealmente seria uma query no banco, 
-        // mas faremos via stream para agilizar sua entrega de hoje)
-        List<ReceitaEntity> receitasDoAno = receitaRepository.findAll().stream()
-                .filter(r -> r.getExercicio() != null && r.getExercicio() == anoFiltro)
-                .toList();
+        // REVISÃO: Usando o seu método original já existente no repositório!
+        BigDecimal totalArrecadado = receitaRepository.totalArrecadadoPorAno(anoFiltro);
 
-        BigDecimal totalArrecadado = receitasDoAno.stream()
-                .map(ReceitaEntity::getValorArrecadado)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // O Banco apenas conta as linhas
+        long totalLancamentos = receitaRepository.countByExercicio(anoFiltro);
 
         Map<String, Object> resumo = new HashMap<>();
         resumo.put("anoReferencia", anoFiltro);
         resumo.put("totalArrecadado", totalArrecadado);
-        resumo.put("totalLancamentos", receitasDoAno.size());
+        resumo.put("totalLancamentos", totalLancamentos);
 
         return ResponseEntity.ok(resumo);
     }
