@@ -36,12 +36,12 @@ public class SecurityConfigurations {
                     req.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll();
                     
                     // PORTAL DO CIDADÃO: Libera APENAS requisições de leitura (GET)
-                    // Qualquer tentativa de POST, PUT ou DELETE baterá na parede e exigirá token.
-                    req.requestMatchers(HttpMethod.GET, "/api/v1/receitas/**").permitAll(); 
+                    // Apenas essas rotas serão usadas pelo site público (sem login)
                     req.requestMatchers(HttpMethod.GET, "/api/v1/portal/**").permitAll(); 
                     
                     // ROTAS PRIVADAS E DE ADMINISTRAÇÃO (Bloqueadas por padrão)
-                    // Inclui POST/PUT/DELETE de receitas, e qualquer acesso a /auditoria e /usuarios
+                    // Inclui TUDO de /api/v1/receitas, /auditoria, /usuarios, etc. 
+                    // Bateu aqui sem token = Erro 401
                     req.anyRequest().authenticated();
                 })
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
@@ -64,7 +64,7 @@ public class SecurityConfigurations {
         
         // CUIDADO COM O CORS: Lista de endereços permitidos para conversar com a API
         configuration.setAllowedOrigins(List.of(
-            "http://localhost:3000", // A sua Retaguarda
+            "http://localhost:3000", // A sua Retaguarda (Painel Admin)
             "http://localhost:3001", // O Portal do seu sócio (Next.js)
             "http://localhost:5173"  // O Portal do seu sócio (React/Vite)
         ));
