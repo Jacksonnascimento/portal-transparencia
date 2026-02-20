@@ -34,6 +34,8 @@ public class AuthController {
         
         // Se a senha estiver correta, ele passa pra cá. Pegamos os dados do usuário logado:
         var usuario = (UsuarioEntity) authentication.getPrincipal();
+
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(authentication);
         
         // Geramos o Token JWT (o "crachá" oficial)
         var tokenJWT = tokenService.gerarToken(usuario);

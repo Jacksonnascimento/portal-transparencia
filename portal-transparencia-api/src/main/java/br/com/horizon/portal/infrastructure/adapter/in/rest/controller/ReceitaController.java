@@ -54,18 +54,13 @@ public class ReceitaController {
             if (fonte != null && !fonte.isEmpty())
                 predicates.add(cb.like(cb.lower(root.get("fonteRecursos")), "%" + fonte.toLowerCase() + "%"));
 
-            // Filtro 1: Data de Lançamento (Contábil)
             if (dataInicio != null)
                 predicates.add(cb.greaterThanOrEqualTo(root.get("dataLancamento"), dataInicio));
             if (dataFim != null)
                 predicates.add(cb.lessThanOrEqualTo(root.get("dataLancamento"), dataFim));
 
-            // Filtro 2: Data de Importação (Auditoria do Sistema)
-            // Como dataImportacao é LocalDateTime, convertemos o LocalDate para o
-            // início/fim do dia
             if (dataImportacaoInicio != null)
-                predicates
-                        .add(cb.greaterThanOrEqualTo(root.get("dataImportacao"), dataImportacaoInicio.atStartOfDay()));
+                predicates.add(cb.greaterThanOrEqualTo(root.get("dataImportacao"), dataImportacaoInicio.atStartOfDay()));
             if (dataImportacaoFim != null)
                 predicates.add(cb.lessThanOrEqualTo(root.get("dataImportacao"), dataImportacaoFim.atTime(23, 59, 59)));
 
@@ -75,7 +70,6 @@ public class ReceitaController {
         return ResponseEntity.ok(repository.findAll(spec, pageable).map(ReceitaResponse::fromEntity));
     }
 
-    // NOVO ENDPOINT: Retorna a lista de anos para o filtro do Frontend
     @GetMapping("/anos")
     public ResponseEntity<List<Integer>> listarAnosDisponiveis() {
         return ResponseEntity.ok(repository.findDistinctExercicios());
@@ -92,5 +86,12 @@ public class ReceitaController {
             return ResponseEntity.badRequest().body("Arquivo vazio!");
         service.importarArquivoCsv(file);
         return ResponseEntity.ok("Arquivo processado com sucesso!");
+    }
+
+    // ENDPOINT PARA DESFAZER IMPORTAÇÃO
+    @DeleteMapping("/lote/{loteId}")
+    public ResponseEntity<String> excluirLote(@PathVariable String loteId) {
+        service.excluirLote(loteId);
+        return ResponseEntity.ok("Lote " + loteId + " excluído com sucesso!");
     }
 }

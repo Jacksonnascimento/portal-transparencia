@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS tb_receita (
     valor_previsto_atualizado DECIMAL(19,2),
     valor_arrecadado DECIMAL(19,2) NOT NULL,
     historico TEXT,
-	data_importacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	data_importacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	id_importacao VARCHAR(255)
 );
 
 -- 3. Tabela de Despesas
@@ -79,3 +80,18 @@ VALUES (
     TRUE
 )
 ON CONFLICT (email) DO NOTHING;
+
+
+-- Criação da tabela de Logs de Auditoria (A "Caixa-Preta")
+CREATE TABLE IF NOT EXISTS tb_log_auditoria (
+    id BIGSERIAL PRIMARY KEY,
+    usuario_id BIGINT, -- Quem fez (pode ser nulo se for uma ação do sistema)
+    usuario_nome VARCHAR(150), -- Nome gravado para histórico (caso o utilizador seja apagado)
+    acao VARCHAR(50) NOT NULL, -- INSERT, UPDATE, DELETE
+    entidade VARCHAR(100) NOT NULL, -- Ex: Receita, Usuario, Despesa
+    entidade_id VARCHAR(100) NOT NULL, -- ID do registo que foi alterado
+    dados_anteriores JSONB, -- Como estava antes (nulo se for INSERT)
+    dados_novos JSONB, -- Como ficou (nulo se for DELETE)
+    ip_origem VARCHAR(50), -- De onde o utilizador acedeu
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -73,4 +73,9 @@ public class ReceitaEntity {
     @CreationTimestamp
     @Column(name = "data_importacao", updatable = false)
     private LocalDateTime dataImportacao;
+
+    //log - desfazer 
+
+    @Column(name = "id_importacao")
+    private String idImportacao;
 }
