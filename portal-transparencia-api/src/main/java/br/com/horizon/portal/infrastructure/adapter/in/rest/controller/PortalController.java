@@ -27,7 +27,7 @@ public class PortalController {
 
     /**
      * DTO (Data Transfer Object) - O formato exato que será entregue ao Portal.
-     * Note que omitimos propositalmente o 'id' do banco e o 'idImportacao'.
+     *
      */
     public record ReceitaPublicaDTO(
             Integer exercicio,
@@ -72,7 +72,7 @@ public class PortalController {
     /**
      * ENDPOINT 2: Resumo para Dashboard (KPIs do Portal)
      * Rota: GET /api/v1/portal/receitas/resumo?ano=2024
-     * Facilita a vida do seu sócio entregando o total já somado no banco.
+     * 
      */
     @GetMapping("/receitas/resumo")
     public ResponseEntity<Map<String, Object>> obterResumoPublico(
