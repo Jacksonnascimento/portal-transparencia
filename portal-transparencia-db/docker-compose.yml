@@ -2,8 +2,9 @@ version: '3.8'
 
 services:
   portal-db:
-    image: postgres:15-alpine
+    image: postgres:15
     container_name: portal_transparencia_db
+    platform: linux/amd64
     restart: always
     environment:
       POSTGRES_DB: ${DB_NAME}
