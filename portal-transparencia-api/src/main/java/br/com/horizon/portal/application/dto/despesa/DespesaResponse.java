@@ -1,4 +1,4 @@
-package br.com.horizon.portal.infrastructure.adapter.in.rest.dto;
+package br.com.horizon.portal.application.dto.despesa;
 
 import br.com.horizon.portal.infrastructure.persistence.entity.DespesaEntity;
 import lombok.Data;

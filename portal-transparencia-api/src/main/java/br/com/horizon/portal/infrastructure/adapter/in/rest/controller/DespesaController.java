@@ -1,7 +1,7 @@
 package br.com.horizon.portal.infrastructure.adapter.in.rest.controller;
 
+import br.com.horizon.portal.application.dto.despesa.DespesaResponse;
 import br.com.horizon.portal.application.service.DespesaService;
-import br.com.horizon.portal.infrastructure.adapter.in.rest.dto.DespesaResponse;
 import br.com.horizon.portal.infrastructure.persistence.repository.DespesaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

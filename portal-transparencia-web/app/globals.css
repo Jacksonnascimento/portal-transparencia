@@ -3,6 +3,19 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Cor padrão inicial (Azul Horizon) */
+  --brand-color: #2563eb; 
+}
+
+/* Classes utilitárias que aceitam a cor dinâmica */
+@utility bg-brand {
+  background-color: var(--brand-color);
+}
+@utility text-brand {
+  color: var(--brand-color);
+}
+@utility border-brand {
+  border-color: var(--brand-color);
 }
 
 @theme inline {
@@ -14,7 +27,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #ffffff; /* Forçando Light Mode para Admin conforme diretrizes de contraste */
+    --background: #ffffff;
     --foreground: #171717;
   }
 }
@@ -22,7 +35,7 @@
 html, body {
   height: 100%;
   width: 100%;
-  overflow-x: hidden; /* Evita scroll lateral acidental */
+  overflow-x: hidden;
 }
 
 body {

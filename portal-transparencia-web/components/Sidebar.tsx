@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
@@ -8,44 +9,74 @@ import {
   TrendingDown, 
   FileUp,
   History,
-  LogOut 
+  LogOut,
+  Users,
+  Settings,
+  Building2
 } from "lucide-react";
+import api from "@/services/api";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [config, setConfig] = useState({
+    nome: 'Horizon AJ',
+    brasao: ''
+  });
+
+  useEffect(() => {
+    async function loadIdentity() {
+      try {
+        const response = await api.get('/portal/configuracoes');
+        if (response.data) {
+          setConfig({
+            nome: response.data.nomeEntidade || 'Horizon AJ',
+            brasao: response.data.urlBrasao ? `http://localhost:8080${response.data.urlBrasao}` : ''
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao carregar marca da sidebar.");
+      }
+    }
+    loadIdentity();
+  }, []);
 
   const handleLogout = () => {
-    // 1. Limpeza de Estados Locais
     localStorage.clear();
     sessionStorage.clear();
-    
-    // 2. Remoção do Cookie de Autenticação (horizon_token)
-    // Essencial para que o middleware.ts permita a estadia na página de login
     document.cookie = "horizon_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-
-    // 3. Redirecionamento Físico com substituição de histórico
-    // Impede que o utilizador volte ao dashboard usando o botão "Voltar" do browser
     window.location.replace('/login');
   };
 
   const menuItems = [
-    { label: "Dashboard", href: "/", icon: LayoutDashboard, activeColor: "text-blue-400" },
-    { label: "Receitas", href: "/receitas", icon: TrendingUp, activeColor: "text-green-400" },
-    { label: "Despesas", href: "/despesas", icon: TrendingDown, activeColor: "text-red-400" },
-    { label: "Auditoria", href: "/auditoria", icon: History, activeColor: "text-purple-400" }
+    { label: "Dashboard", href: "/", icon: LayoutDashboard },
+    { label: "Receitas", href: "/receitas", icon: TrendingUp },
+    { label: "Despesas", href: "/despesas", icon: TrendingDown },
+    { label: "Auditoria", href: "/auditoria", icon: History },
+    { label: "Usuários", href: "/usuarios", icon: Users },
+    { label: "Configurações", href: "/configuracoes", icon: Settings } 
   ];
 
   return (
-    <aside className="w-64 bg-[#0F172A] text-white hidden lg:flex flex-col sticky top-0 h-screen shadow-2xl z-50">
+    <aside className="w-64 bg-[#0F172A] text-white hidden lg:flex flex-col sticky top-0 h-screen shadow-2xl z-50 border-r border-white/5">
       
-      {/* Branding Horizon AJ */}
-      <div className="p-5 border-b border-slate-800">
-        <h1 className="text-xl font-black tracking-tighter italic text-blue-500">
-          HORIZON <span className="text-white">AJ</span>
-        </h1>
+      {/* Branding Dinâmico */}
+      <div className="p-6 border-b border-slate-800 flex items-center gap-3">
+        {config.brasao ? (
+          <img src={config.brasao} alt="Logo" className="w-10 h-10 object-contain" />
+        ) : (
+          <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center">
+            <Building2 size={20} className="text-slate-500" />
+          </div>
+        )}
+        <div className="flex flex-col">
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter mb-1">Entidade</span>
+          <h1 className="text-xs font-bold leading-tight uppercase tracking-tight line-clamp-2">
+            {config.nome}
+          </h1>
+        </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-6 space-y-1">
         {menuItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -55,47 +86,47 @@ export function Sidebar() {
               key={item.href} 
               href={item.href}
               className={`
-                flex items-center w-full px-4 py-2 rounded-lg transition-all group mb-1
+                flex items-center w-full px-4 py-2.5 rounded-xl transition-all group mb-1
                 ${isActive 
-                  ? 'bg-blue-600 text-white font-semibold shadow-lg shadow-blue-900/40' 
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-brand text-white shadow-lg' 
+                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
                 }
               `}
             >
               <Icon 
                 size={18} 
-                className={`mr-3 ${!isActive ? `group-hover:${item.activeColor}` : ''}`} 
+                className={`mr-3 transition-colors ${!isActive ? 'group-hover:text-brand' : ''}`} 
               /> 
-              {item.label}
+              <span className="text-xs font-bold uppercase tracking-wide">{item.label}</span>
             </Link>
           );
         })}
 
-        {/* Separador e Link de Importação (Foco em LRF/LAI) */}
         <Link 
           href="/importar" 
           className={`
-            flex items-center w-full px-4 py-2 rounded-lg transition-all border-t border-slate-800 pt-4 mt-4 group
-            ${pathname === '/importar' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
+            flex items-center w-full px-4 py-2.5 rounded-xl transition-all border-t border-slate-800 pt-6 mt-6 group
+            ${pathname === '/importar' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}
           `}
         >
-          <FileUp size={18} className="mr-3 group-hover:text-blue-400" /> 
-          Importar Dados
+          <FileUp size={18} className="mr-3 group-hover:text-brand transition-colors" /> 
+          <span className="text-xs font-bold uppercase tracking-wide">Importar Dados</span>
         </Link>
 
-        {/* Botão de Logout com Contraste Elevado */}
         <button 
           onClick={handleLogout}
-          className="flex items-center w-full px-4 py-2 mt-4 text-red-400 hover:bg-red-950/30 hover:text-red-300 rounded-lg transition-all group font-bold text-xs uppercase"
+          className="flex items-center w-full px-4 py-2.5 mt-4 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-xl transition-all group font-black text-[10px] uppercase tracking-widest"
         >
           <LogOut size={18} className="mr-3" />
           Sair do Sistema
         </button>
       </nav>
       
-      {/* Footer Institucional */}
-      <div className="p-4 text-[10px] text-slate-500 text-center border-t border-slate-800 leading-relaxed">
-        &copy; 2026 <a href="https://horizonaj.com.br/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 underline font-bold">Horizon AJ Desenvolvimento</a>. <br/> Todos os direitos reservados.
+      {/* Footer Horizon AJ */}
+      <div className="p-6 bg-black/20">
+        <h2 className="text-[11px] font-black italic text-center tracking-tighter text-slate-400">
+           HORIZON <span className="text-brand">AJ</span>
+        </h2>
       </div>
     </aside>
   );

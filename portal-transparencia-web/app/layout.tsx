@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeHandler } from "@/components/ThemeHandler";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,11 +25,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ThemeHandler /> {/* Injeta a cor dinâmica em todas as páginas */}
         {children}
-        {/* ÂNCORA PARA OS MODAIS - ISSO RESOLVE O PROBLEMA DE POSICIONAMENTO */}
         <div id="modal-root" className="relative z-[9999]" />
       </body>
     </html>

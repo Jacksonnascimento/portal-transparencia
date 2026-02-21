@@ -1,4 +1,4 @@
-package br.com.horizon.portal.infrastructure.adapter.in.rest.dto;
+package br.com.horizon.portal.application.dto.auth;
 
 public record TokenResponse(
         String token,

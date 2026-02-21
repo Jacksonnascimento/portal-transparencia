@@ -75,7 +75,7 @@ INSERT INTO tb_usuario (nome, email, senha, role, ativo)
 VALUES (
     'Administrador do Sistema', 
     'admin@horizon.com.br', 
-    '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIvi', 
+    '$2a$10$2Y0Yx9Q42kfvxGQgeCnAzeKQvvX1M93NfwKSFfD.8OlsvCnFpZkJ.', 
     'ADMIN', 
     TRUE
 )
@@ -95,3 +95,20 @@ CREATE TABLE IF NOT EXISTS tb_log_auditoria (
     ip_origem VARCHAR(50), -- De onde o utilizador acedeu
     data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Criação da Tabela
+CREATE TABLE IF NOT EXISTS tb_configuracao_portal (
+    id BIGINT PRIMARY KEY,
+    nome_entidade VARCHAR(255),
+    cnpj VARCHAR(20),
+    url_brasao VARCHAR(255),
+    cor_principal VARCHAR(7), -- Para guardar o Hexadecimal (ex: #0F172A)
+    endereco VARCHAR(255),
+    telefone VARCHAR(20),
+    horario_atendimento VARCHAR(100)
+);
+
+-- Seed Inicial (Garante que o ID 1 sempre exista)
+INSERT INTO tb_configuracao_portal (id, nome_entidade, cnpj, cor_principal, endereco, telefone, horario_atendimento)
+SELECT 1, 'Horizon Transparência', '00.000.000/0001-00', '#0F172A', 'Rua Exemplo, 123', '(00) 0000-0000', '08h às 14h'
+WHERE NOT EXISTS (SELECT 1 FROM tb_configuracao_portal WHERE id = 1);

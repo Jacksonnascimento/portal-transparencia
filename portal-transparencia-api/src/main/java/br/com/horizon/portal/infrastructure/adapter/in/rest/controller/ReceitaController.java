@@ -1,7 +1,7 @@
 package br.com.horizon.portal.infrastructure.adapter.in.rest.controller;
 
+import br.com.horizon.portal.application.dto.receita.ReceitaResponse;
 import br.com.horizon.portal.application.service.ReceitaService;
-import br.com.horizon.portal.infrastructure.adapter.in.rest.dto.ReceitaResponse;
 import br.com.horizon.portal.infrastructure.persistence.entity.ReceitaEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.ReceitaRepository;
 import jakarta.persistence.criteria.Predicate;

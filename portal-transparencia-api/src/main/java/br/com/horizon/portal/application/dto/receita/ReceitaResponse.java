@@ -1,4 +1,4 @@
-package br.com.horizon.portal.infrastructure.adapter.in.rest.dto;
+package br.com.horizon.portal.application.dto.receita;
 
 import br.com.horizon.portal.infrastructure.persistence.entity.ReceitaEntity;
 import lombok.Builder;

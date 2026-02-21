@@ -1,7 +1,7 @@
 package br.com.horizon.portal.infrastructure.adapter.in.rest.controller;
 
-import br.com.horizon.portal.infrastructure.adapter.in.rest.dto.LoginRequest;
-import br.com.horizon.portal.infrastructure.adapter.in.rest.dto.TokenResponse;
+import br.com.horizon.portal.application.dto.auth.LoginRequest;
+import br.com.horizon.portal.application.dto.auth.TokenResponse;
 import br.com.horizon.portal.infrastructure.persistence.entity.UsuarioEntity;
 import br.com.horizon.portal.infrastructure.security.TokenService;
 import jakarta.validation.Valid;
