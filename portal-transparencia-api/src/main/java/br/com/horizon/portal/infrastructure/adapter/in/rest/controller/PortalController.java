@@ -27,88 +27,94 @@ public class PortalController {
     private final ReceitaRepository receitaRepository;
 
     /**
-     * DTO Público - Inclui campos essenciais para conformidade PNTP 2025.
+     * DTO Público para conformidade com a Cartilha PNTP 2025.
      */
     public record ReceitaPublicaDTO(
-            Integer exercicio,
-            Integer mes,
-            LocalDate dataLancamento,
-            String categoriaEconomica,
-            String origem,
-            String fonteRecursos,
-            BigDecimal valorArrecadado,
-            String historico
+            Integer exercicio, Integer mes, LocalDate dataLancamento,
+            String categoriaEconomica, String origem, String fonteRecursos,
+            BigDecimal valorArrecadado, String historico
     ) {
         public static ReceitaPublicaDTO fromEntity(ReceitaEntity entity) {
             return new ReceitaPublicaDTO(
-                    entity.getExercicio(),
-                    entity.getMes(),
-                    entity.getDataLancamento(),
-                    entity.getCategoriaEconomica(),
-                    entity.getOrigem(),
-                    entity.getFonteRecursos(),
-                    entity.getValorArrecadado(),
-                    entity.getHistorico()
+                    entity.getExercicio(), entity.getMes(), entity.getDataLancamento(),
+                    entity.getCategoriaEconomica(), entity.getOrigem(), entity.getFonteRecursos(),
+                    entity.getValorArrecadado(), entity.getHistorico()
             );
         }
     }
 
     /**
-     * ENDPOINT 1: Listagem Pública com Filtros Avançados (Requisito PNTP)
-     * Rota: GET /api/v1/portal/receitas
+     * ENDPOINT 1: Listagem com Filtros Avançados
      */
     @GetMapping("/receitas")
     public ResponseEntity<Page<ReceitaPublicaDTO>> listarReceitasPublicas(
             @RequestParam(required = false) Integer exercicio,
-            @RequestParam(required = false) Integer mes,
+            @RequestParam(required = false) String origem,
+            @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String fonte,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
-            @RequestParam(required = false) String categoria,
-            @RequestParam(required = false) String origem,
-            @RequestParam(required = false) String fonte,
             @PageableDefault(size = 20, sort = {"dataLancamento"}) Pageable pageable) {
 
-        Specification<ReceitaEntity> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            if (exercicio != null) predicates.add(cb.equal(root.get("exercicio"), exercicio));
-            if (mes != null) predicates.add(cb.equal(root.get("mes"), mes));
-            if (dataInicio != null) predicates.add(cb.greaterThanOrEqualTo(root.get("dataLancamento"), dataInicio));
-            if (dataFim != null) predicates.add(cb.lessThanOrEqualTo(root.get("dataLancamento"), dataFim));
-            
-            // Filtros LIKE para busca textual facilitada (Item 1.4 da Cartilha)
-            if (categoria != null) predicates.add(cb.like(cb.lower(root.get("categoriaEconomica")), "%" + categoria.toLowerCase() + "%"));
-            if (origem != null) predicates.add(cb.like(cb.lower(root.get("origem")), "%" + origem.toLowerCase() + "%"));
-            if (fonte != null) predicates.add(cb.like(cb.lower(root.get("fonteRecursos")), "%" + fonte.toLowerCase() + "%"));
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-
-        Page<ReceitaPublicaDTO> page = receitaRepository.findAll(spec, pageable)
-                .map(ReceitaPublicaDTO::fromEntity);
-                
+        Specification<ReceitaEntity> spec = criarSpecification(exercicio, origem, categoria, fonte, dataInicio, dataFim);
+        Page<ReceitaPublicaDTO> page = receitaRepository.findAll(spec, pageable).map(ReceitaPublicaDTO::fromEntity);
+        
         return ResponseEntity.ok(page);
     }
 
     /**
-     * ENDPOINT 2: Resumo Dinâmico (KPIs)
-     * Agora o resumo também aceita filtros para Dashboards específicos por categoria/fonte.
+     * ENDPOINT 2: Resumo (KPIs) com os MESMOS filtros da listagem.
+     * Essencial para que o Dashboard acompanhe a navegação do usuário.
      */
     @GetMapping("/receitas/resumo")
     public ResponseEntity<Map<String, Object>> obterResumoPublico(
-            @RequestParam(name = "exercicio", required = false) Integer exercicio) {
-        
-        int anoFiltro = (exercicio != null) ? exercicio : LocalDate.now().getYear();
+            @RequestParam(required = false) Integer exercicio,
+            @RequestParam(required = false) String origem,
+            @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String fonte,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
 
-        BigDecimal totalArrecadado = receitaRepository.totalArrecadadoPorAno(anoFiltro);
-        long totalLancamentos = receitaRepository.countByExercicio(anoFiltro);
+        Specification<ReceitaEntity> spec = criarSpecification(exercicio, origem, categoria, fonte, dataInicio, dataFim);
+
+        // 1. Contagem total baseada nos filtros
+        long totalRegistros = receitaRepository.count(spec);
+
+        // 2. Cálculo da soma baseada nos filtros
+        // Buscamos a lista filtrada para somar (Em produção, o ideal é uma query agregada no Repository)
+        List<ReceitaEntity> filtrados = receitaRepository.findAll(spec);
+        BigDecimal totalArrecadado = filtrados.stream()
+                .map(ReceitaEntity::getValorArrecadado)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> resumo = new HashMap<>();
-        resumo.put("exercicio", anoFiltro);
-        resumo.put("totalArrecadado", totalArrecadado != null ? totalArrecadado : BigDecimal.ZERO);
-        resumo.put("totalRegistros", totalLancamentos);
-        resumo.put("serieHistoricaDisponivel", true); // Requisito 3.1 da Cartilha (Últimos 3 anos)
+        resumo.put("totalArrecadado", totalArrecadado);
+        resumo.put("totalRegistros", totalRegistros);
+        resumo.put("filtrosAplicados", buildFiltrosAtivos(exercicio, origem, categoria));
 
         return ResponseEntity.ok(resumo);
+    }
+
+    /**
+     * Helper para centralizar a lógica de filtros (DRY - Don't Repeat Yourself)
+     */
+    private Specification<ReceitaEntity> criarSpecification(Integer exercicio, String origem, String categoria, 
+                                                            String fonte, LocalDate start, LocalDate end) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (exercicio != null) predicates.add(cb.equal(root.get("exercicio"), exercicio));
+            if (origem != null && !origem.isBlank()) predicates.add(cb.like(cb.lower(root.get("origem")), "%" + origem.toLowerCase() + "%"));
+            if (categoria != null && !categoria.isBlank()) predicates.add(cb.like(cb.lower(root.get("categoriaEconomica")), "%" + categoria.toLowerCase() + "%"));
+            if (fonte != null && !fonte.isBlank()) predicates.add(cb.like(cb.lower(root.get("fonteRecursos")), "%" + fonte.toLowerCase() + "%"));
+            if (start != null) predicates.add(cb.greaterThanOrEqualTo(root.get("dataLancamento"), start));
+            if (end != null) predicates.add(cb.lessThanOrEqualTo(root.get("dataLancamento"), end));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    private String buildFiltrosAtivos(Integer exercicio, String origem, String categoria) {
+        return String.format("Ano: %s | Origem: %s", 
+                exercicio != null ? exercicio : "Todos", 
+                origem != null ? origem : "Todas");
     }
 }
