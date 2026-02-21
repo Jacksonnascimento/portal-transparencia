@@ -20,10 +20,6 @@ public class ConfiguracaoController {
 
     // --- ENDPOINTS PRIVADOS (Para o Retaguarda) ---
 
-    /**
-     * Rota de leitura para o Admin. 
-     * Resolve o erro 405 que ocorria ao carregar a página de configurações.
-     */
     @GetMapping("/configuracoes")
     public ResponseEntity<ConfiguracaoDTO.Response> obterParaAdmin() {
         return ResponseEntity.ok(service.obterConfiguracao());
@@ -39,7 +35,7 @@ public class ConfiguracaoController {
         return ResponseEntity.ok(service.salvarBrasao(file));
     }
 
-    // --- ENDPOINTS PÚBLICOS (Para o Portal do seu sócio) ---
+    // --- ENDPOINTS PÚBLICOS (Para o Portal) ---
 
     @GetMapping("/portal/configuracoes")
     public ResponseEntity<ConfiguracaoDTO.Response> obterConfiguracaoPortal() {
@@ -51,19 +47,30 @@ public class ConfiguracaoController {
         String path = System.getProperty("user.dir") + File.separator + "Imagens";
         File folder = new File(path);
         
-        // Verifica se a pasta existe antes de tentar listar
         if (!folder.exists()) {
             return ResponseEntity.notFound().build();
         }
 
-        // Busca o arquivo que começa com "brasao_oficial"
-        File[] files = folder.listFiles((dir, name) -> name.startsWith("brasao_oficial"));
+        // CORREÇÃO 1: Busca o arquivo que começa APENAS com "brasao"
+        File[] files = folder.listFiles((dir, name) -> name.startsWith("brasao"));
         
         if (files != null && files.length > 0) {
+            File arquivoImagem = files[0];
+            String nomeArquivo = arquivoImagem.getName().toLowerCase();
+            
+            // CORREÇÃO 2: Tipagem Dinâmica (Impede que o navegador bloqueie JPGs lidos como PNGs)
+            MediaType mediaType = MediaType.IMAGE_PNG; // Padrão
+            if (nomeArquivo.endsWith(".jpg") || nomeArquivo.endsWith(".jpeg")) {
+                mediaType = MediaType.IMAGE_JPEG;
+            } else if (nomeArquivo.endsWith(".svg")) {
+                mediaType = MediaType.valueOf("image/svg+xml");
+            }
+
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE)
-                    .body(new FileSystemResource(files[0]));
+                    .header(HttpHeaders.CONTENT_TYPE, mediaType.toString())
+                    .body(new FileSystemResource(arquivoImagem));
         }
+        
         return ResponseEntity.notFound().build();
     }
 }

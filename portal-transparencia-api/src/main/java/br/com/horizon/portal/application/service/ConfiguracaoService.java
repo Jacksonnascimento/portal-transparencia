@@ -40,16 +40,38 @@ public class ConfiguracaoService {
 
     @Transactional
     public String salvarBrasao(MultipartFile file) {
+        // --- NOVA VALIDAÇÃO DE TAMANHO (Limite de 2MB) ---
+        long MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 Megabytes
+        if (file.getSize() > MAX_SIZE_BYTES) {
+            throw new RuntimeException("Ficheiro recusado: O tamanho do brasão excede o limite máximo de 2MB.");
+        }
+
         try {
             File diretorio = new File(PASTA_IMAGENS);
             if (!diretorio.exists()) diretorio.mkdirs();
 
-            String extensao = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
-            String nomeArquivo = "brasao_oficial" + extensao;
+            // 1. Limpeza total: Apaga qualquer ficheiro anterior que seja um brasão
+            File[] arquivosAntigos = diretorio.listFiles((dir, name) -> name.startsWith("brasao"));
+            if (arquivosAntigos != null) {
+                for (File f : arquivosAntigos) {
+                    f.delete();
+                }
+            }
+
+            // 2. Extrai a extensão e nomeia cravado como "brasao"
+            String extensao = "";
+            String originalName = file.getOriginalFilename();
+            if (originalName != null && originalName.contains(".")) {
+                extensao = originalName.substring(originalName.lastIndexOf("."));
+            }
+            
+            String nomeArquivo = "brasao" + extensao;
             Path caminho = Paths.get(PASTA_IMAGENS, nomeArquivo);
             
+            // 3. Salva o novo ficheiro
             Files.copy(file.getInputStream(), caminho, StandardCopyOption.REPLACE_EXISTING);
 
+            // 4. Atualiza o banco
             ConfiguracaoEntity entity = repository.findById(1L).orElseThrow();
             entity.setUrlBrasao("/api/v1/portal/configuracoes/brasao");
             repository.save(entity);

@@ -30,14 +30,25 @@ export function Sidebar() {
         if (response.data) {
           setConfig({
             nome: response.data.nomeEntidade || 'Horizon AJ',
-            brasao: response.data.urlBrasao ? `http://localhost:8080${response.data.urlBrasao}` : ''
+            // Adicionamos um timestamp (Date.now()) para forçar o browser a não usar o cache da imagem
+            brasao: response.data.urlBrasao ? `http://localhost:8080${response.data.urlBrasao}?t=${Date.now()}` : ''
           });
         }
       } catch (err) {
         console.error("Erro ao carregar marca da sidebar.");
       }
     }
+
+    // Carrega a identidade inicial
     loadIdentity();
+
+    // Cria um ouvinte para recarregar a identidade sempre que as configurações forem salvas
+    window.addEventListener('horizon:configUpdated', loadIdentity);
+
+    // Limpa o ouvinte quando o componente for desmontado
+    return () => {
+      window.removeEventListener('horizon:configUpdated', loadIdentity);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -122,10 +133,10 @@ export function Sidebar() {
         </button>
       </nav>
       
-      {/* Footer Horizon AJ */}
+      {/* Footer Horizon AJ com cor fixa exigida */}
       <div className="p-6 bg-black/20">
         <h2 className="text-[11px] font-black italic text-center tracking-tighter text-slate-400">
-           HORIZON <span className="text-brand">AJ</span>
+           HORIZON <span className="text-[#4242d1]">AJ</span>
         </h2>
       </div>
     </aside>

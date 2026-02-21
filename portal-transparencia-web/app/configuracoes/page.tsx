@@ -68,6 +68,13 @@ export default function ConfiguracoesPage() {
     setError(null);
     try {
       await api.put('/configuracoes', formData);
+      
+      // Injeta a nova cor imediatamente na variável de ambiente do CSS da página atual
+      document.documentElement.style.setProperty('--brand-color', formData.corPrincipal);
+      
+      // Dispara o evento para a Sidebar capturar e atualizar seu próprio estado
+      window.dispatchEvent(new Event('horizon:configUpdated'));
+
       setSuccess("Configurações salvas com sucesso!");
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -81,6 +88,14 @@ export default function ConfiguracoesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // --- NOVA VALIDAÇÃO DE TAMANHO (Limite de 2MB) ---
+    const MAX_SIZE_MB = 2;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      setError(`A imagem excede o limite. O tamanho máximo permitido é de ${MAX_SIZE_MB}MB.`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return; 
+    }
+
     const uploadData = new FormData();
     uploadData.append('file', file);
 
@@ -90,8 +105,14 @@ export default function ConfiguracoesPage() {
       await api.post('/configuracoes/brasao', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      
       // Atualiza o preview forçando o reload da imagem com um timestamp
-      setFormData(prev => ({ ...prev, urlBrasao: `/api/v1/portal/configuracoes/brasao?t=${Date.now()}` }));
+      const newBrasaoUrl = `/api/v1/portal/configuracoes/brasao?t=${Date.now()}`;
+      setFormData(prev => ({ ...prev, urlBrasao: newBrasaoUrl }));
+
+      // Dispara o evento para a Sidebar capturar e atualizar a imagem
+      window.dispatchEvent(new Event('horizon:configUpdated'));
+
       setSuccess("Brasão atualizado!");
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
