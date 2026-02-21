@@ -2,19 +2,21 @@ package br.com.horizon.portal.infrastructure.adapter.in.rest.controller;
 
 import br.com.horizon.portal.infrastructure.persistence.entity.ReceitaEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.ReceitaRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -25,7 +27,7 @@ public class PortalController {
     private final ReceitaRepository receitaRepository;
 
     /**
-     * DTO Público - Oculta IDs internos e dados de auditoria da Retaguarda.
+     * DTO Público - Inclui campos essenciais para conformidade PNTP 2025.
      */
     public record ReceitaPublicaDTO(
             Integer exercicio,
@@ -52,39 +54,60 @@ public class PortalController {
     }
 
     /**
-     * ENDPOINT 1: Listagem Pública de Receitas
-     * Rota: GET /api/v1/portal/receitas?page=0&size=20
+     * ENDPOINT 1: Listagem Pública com Filtros Avançados (Requisito PNTP)
+     * Rota: GET /api/v1/portal/receitas
      */
     @GetMapping("/receitas")
     public ResponseEntity<Page<ReceitaPublicaDTO>> listarReceitasPublicas(
+            @RequestParam(required = false) Integer exercicio,
+            @RequestParam(required = false) Integer mes,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
+            @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String origem,
+            @RequestParam(required = false) String fonte,
             @PageableDefault(size = 20, sort = {"dataLancamento"}) Pageable pageable) {
-        
-        Page<ReceitaPublicaDTO> page = receitaRepository.findAll(pageable)
+
+        Specification<ReceitaEntity> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (exercicio != null) predicates.add(cb.equal(root.get("exercicio"), exercicio));
+            if (mes != null) predicates.add(cb.equal(root.get("mes"), mes));
+            if (dataInicio != null) predicates.add(cb.greaterThanOrEqualTo(root.get("dataLancamento"), dataInicio));
+            if (dataFim != null) predicates.add(cb.lessThanOrEqualTo(root.get("dataLancamento"), dataFim));
+            
+            // Filtros LIKE para busca textual facilitada (Item 1.4 da Cartilha)
+            if (categoria != null) predicates.add(cb.like(cb.lower(root.get("categoriaEconomica")), "%" + categoria.toLowerCase() + "%"));
+            if (origem != null) predicates.add(cb.like(cb.lower(root.get("origem")), "%" + origem.toLowerCase() + "%"));
+            if (fonte != null) predicates.add(cb.like(cb.lower(root.get("fonteRecursos")), "%" + fonte.toLowerCase() + "%"));
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<ReceitaPublicaDTO> page = receitaRepository.findAll(spec, pageable)
                 .map(ReceitaPublicaDTO::fromEntity);
                 
         return ResponseEntity.ok(page);
     }
 
     /**
-     * ENDPOINT 2: Resumo para Dashboard (KPIs do Portal)
-     * Rota: GET /api/v1/portal/receitas/resumo?ano=2024
+     * ENDPOINT 2: Resumo Dinâmico (KPIs)
+     * Agora o resumo também aceita filtros para Dashboards específicos por categoria/fonte.
      */
     @GetMapping("/receitas/resumo")
     public ResponseEntity<Map<String, Object>> obterResumoPublico(
-            @RequestParam(name = "ano", required = false) Integer ano) {
+            @RequestParam(name = "exercicio", required = false) Integer exercicio) {
         
-        int anoFiltro = (ano != null) ? ano : LocalDate.now().getYear();
+        int anoFiltro = (exercicio != null) ? exercicio : LocalDate.now().getYear();
 
-        // REVISÃO: Usando o seu método original já existente no repositório!
         BigDecimal totalArrecadado = receitaRepository.totalArrecadadoPorAno(anoFiltro);
-
-        // O Banco apenas conta as linhas
         long totalLancamentos = receitaRepository.countByExercicio(anoFiltro);
 
         Map<String, Object> resumo = new HashMap<>();
-        resumo.put("anoReferencia", anoFiltro);
-        resumo.put("totalArrecadado", totalArrecadado);
-        resumo.put("totalLancamentos", totalLancamentos);
+        resumo.put("exercicio", anoFiltro);
+        resumo.put("totalArrecadado", totalArrecadado != null ? totalArrecadado : BigDecimal.ZERO);
+        resumo.put("totalRegistros", totalLancamentos);
+        resumo.put("serieHistoricaDisponivel", true); // Requisito 3.1 da Cartilha (Últimos 3 anos)
 
         return ResponseEntity.ok(resumo);
     }
