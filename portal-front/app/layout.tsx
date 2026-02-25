@@ -98,7 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="col-span-1 md:col-span-1">
                 <div className="flex items-center gap-3 mb-6">
                   <Landmark className="text-[var(--cor-primaria)]" size={24} />
-                  <span className="font-black text-slate-900 uppercase tracking-tighter italic">Horizon Gov</span>
+                  <span className="font-black text-slate-900 uppercase tracking-tighter italic">Horizon AJ</span>
                 </div>
                 <p className="text-sm text-slate-500 leading-relaxed font-medium">
                   Este portal tem como objetivo garantir o acesso à informação e a transparência pública, conforme a Lei nº 12.527/2011.
