@@ -1,4 +1,4 @@
-// File: C:\Users\ander\OneDrive\Área de Trabalho\portal\portal-transparencia\portal-front\app\layout.tsx
+// File: C:\git\portal-transparencia\portal-front\app\layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
