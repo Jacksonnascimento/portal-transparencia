@@ -28,10 +28,12 @@ export default function ReceitasPage() {
   const [resumo, setResumo] = useState({ totalArrecadado: 0, totalRegistros: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selected, setSelected] = useState<Receita | null>(null);
 
+  // Filtros que o usuário está digitando (Rascunho)
   const [filtros, setFiltros] = useState({
     exercicio: new Date().getFullYear().toString(),
     origem: '',
@@ -40,6 +42,9 @@ export default function ReceitasPage() {
     dataInicio: '',
     dataFim: ''
   });
+
+  // Filtros que realmente geraram a tabela atual (Aplicados)
+  const [filtrosAplicados, setFiltrosAplicados] = useState(filtros);
 
   const anos = Array.from({ length: 6 }, (_, i) => (new Date().getFullYear() - i).toString());
 
@@ -70,6 +75,9 @@ export default function ReceitasPage() {
         totalRegistros: resResumo.data.totalRegistros || 0
       });
 
+      // Sincroniza os filtros aplicados após o sucesso da busca
+      setFiltrosAplicados(filtros);
+
     } catch (err) {
       console.error("Erro na busca de receitas:", err);
       setError("Não foi possível conectar à API de Transparência.");
@@ -80,7 +88,43 @@ export default function ReceitasPage() {
 
   useEffect(() => {
     buscarDados();
-  }, [buscarDados]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Removemos o buscarDados da dependência para evitar loop se os filtros mudarem sem clicar
+
+  // --- FUNÇÃO DE EXPORTAÇÃO USANDO OS FILTROS APLICADOS ---
+  const handleExport = async (formato: 'csv' | 'pdf') => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('formato', formato);
+      
+      // ATENÇÃO: Aqui usamos "filtrosAplicados" e não "filtros"
+      // Garantindo que a exportação seja idêntica à tabela renderizada
+      if (filtrosAplicados.exercicio) params.append('exercicio', filtrosAplicados.exercicio);
+      if (filtrosAplicados.origem) params.append('origem', filtrosAplicados.origem);
+      if (filtrosAplicados.categoria) params.append('categoria', filtrosAplicados.categoria);
+      if (filtrosAplicados.fonte) params.append('fonte', filtrosAplicados.fonte);
+      if (filtrosAplicados.dataInicio) params.append('dataInicio', filtrosAplicados.dataInicio);
+      if (filtrosAplicados.dataFim) params.append('dataFim', filtrosAplicados.dataFim);
+
+      const response = await api.get(`/portal/receitas/exportar?${params.toString()}`, {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `receitas_${filtrosAplicados.exercicio || 'export'}.${formato}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error(`Erro ao exportar ${formato}:`, err);
+      alert(`Erro ao gerar o arquivo ${formato.toUpperCase()}. Verifique se o backend está rodando.`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const formatMoney = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -104,15 +148,29 @@ export default function ReceitasPage() {
           <p className="text-slate-500 font-medium text-lg mt-1">Transparência da Arrecadação Municipal</p>
         </div>
         <div className="flex gap-3">
-            <button className="bg-white p-4 rounded-2xl border border-slate-200 text-slate-400 hover:text-black hover:shadow-xl transition-all"><Printer size={22} /></button>
-            <button className="bg-white p-4 rounded-2xl border border-slate-200 text-slate-400 hover:text-black hover:shadow-xl transition-all"><Download size={22} /></button>
+            <button 
+              onClick={() => handleExport('pdf')} 
+              disabled={isExporting}
+              className="bg-white p-4 rounded-2xl border border-slate-200 text-slate-400 hover:text-black hover:shadow-xl transition-all disabled:opacity-50"
+              title="Exportar como PDF"
+            >
+              <Printer size={22} className={isExporting ? "animate-pulse" : ""} />
+            </button>
+            <button 
+              onClick={() => handleExport('csv')} 
+              disabled={isExporting}
+              className="bg-white p-4 rounded-2xl border border-slate-200 text-slate-400 hover:text-black hover:shadow-xl transition-all disabled:opacity-50"
+              title="Exportar como CSV"
+            >
+              <Download size={22} className={isExporting ? "animate-pulse" : ""} />
+            </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
         <div className="bg-[var(--cor-primaria)] p-10 rounded-[3rem] text-white shadow-2xl shadow-[var(--cor-primaria-fundo)] relative overflow-hidden group">
           <TrendingUp className="absolute right-[-20px] bottom-[-20px] opacity-20 group-hover:scale-110 transition-transform duration-700" size={200} />
-          <p className="text-white/80 font-bold uppercase text-xs tracking-[0.2em] mb-3">Total Arrecadado ({filtros.exercicio})</p>
+          <p className="text-white/80 font-bold uppercase text-xs tracking-[0.2em] mb-3">Total Arrecadado ({filtrosAplicados.exercicio})</p>
           <h2 className="text-6xl font-black tracking-tighter">{loading ? "..." : formatMoney(resumo.totalArrecadado)}</h2>
         </div>
         
