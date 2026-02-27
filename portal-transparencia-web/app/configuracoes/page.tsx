@@ -4,18 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import api from '@/services/api';
 import { Sidebar } from '@/components/Sidebar';
 import { 
-  Settings, 
-  Save, 
-  Upload, 
-  Building2, 
-  Palette, 
-  MapPin, 
-  Phone, 
-  Clock, 
-  FileText,
-  AlertCircle,
-  CheckCircle,
-  Loader2
+  Settings, Save, Upload, Building2, Palette, MapPin, Phone, Clock, FileText,
+  AlertCircle, CheckCircle, Loader2, Globe, ExternalLink, Facebook, Instagram
 } from 'lucide-react';
 
 interface Configuracao {
@@ -26,7 +16,31 @@ interface Configuracao {
   endereco: string;
   telefone: string;
   horarioAtendimento: string;
+  siteOficial: string;
+  diarioOficial: string;
+  portalContribuinte: string;
+  facebook: string;
+  instagram: string;
+  twitter: string;
 }
+
+// --- COMPONENTE CUSTOMIZADO: Logo Oficial do X (Antigo Twitter) ---
+const XLogo = ({ size = 14, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
+
+// --- FUNÇÃO DE MÁSCARA: CNPJ (XX.XXX.XXX/XXXX-XX) ---
+const formatCNPJ = (value: string) => {
+  return value
+    .replace(/\D/g, '') // Remove tudo o que não é dígito
+    .replace(/^(\d{2})(\d)/, '$1.$2') // Coloca ponto entre o segundo e o terceiro dígitos
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3') // Coloca ponto entre o quinto e o sexto dígitos
+    .replace(/\.(\d{3})(\d)/, '.$1/$2') // Coloca uma barra entre o oitavo e o nono dígitos
+    .replace(/(\d{4})(\d)/, '$1-$2') // Coloca um hífen depois do bloco de quatro dígitos
+    .substring(0, 18); // Limita o tamanho máximo
+};
 
 export default function ConfiguracoesPage() {
   const [formData, setFormData] = useState<Configuracao>({
@@ -36,7 +50,13 @@ export default function ConfiguracoesPage() {
     corPrincipal: '#0F172A',
     endereco: '',
     telefone: '',
-    horarioAtendimento: ''
+    horarioAtendimento: '',
+    siteOficial: '',
+    diarioOficial: '',
+    portalContribuinte: '',
+    facebook: '',
+    instagram: '',
+    twitter: ''
   });
 
   const [loading, setLoading] = useState(true);
@@ -50,7 +70,16 @@ export default function ConfiguracoesPage() {
     setLoading(true);
     try {
       const response = await api.get('/configuracoes');
-      setFormData(response.data);
+      const data = response.data;
+      setFormData({
+        ...data,
+        siteOficial: data.siteOficial || '',
+        diarioOficial: data.diarioOficial || '',
+        portalContribuinte: data.portalContribuinte || '',
+        facebook: data.facebook || '',
+        instagram: data.instagram || '',
+        twitter: data.twitter || ''
+      });
     } catch (err) {
       setError("Falha ao carregar configurações.");
     } finally {
@@ -68,13 +97,8 @@ export default function ConfiguracoesPage() {
     setError(null);
     try {
       await api.put('/configuracoes', formData);
-      
-      // Injeta a nova cor imediatamente na variável de ambiente do CSS da página atual
       document.documentElement.style.setProperty('--brand-color', formData.corPrincipal);
-      
-      // Dispara o evento para a Sidebar capturar e atualizar seu próprio estado
       window.dispatchEvent(new Event('horizon:configUpdated'));
-
       setSuccess("Configurações salvas com sucesso!");
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -88,10 +112,9 @@ export default function ConfiguracoesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // --- NOVA VALIDAÇÃO DE TAMANHO (Limite de 2MB) ---
     const MAX_SIZE_MB = 2;
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      setError(`A imagem excede o limite. O tamanho máximo permitido é de ${MAX_SIZE_MB}MB.`);
+      setError(`A imagem excede o limite de ${MAX_SIZE_MB}MB.`);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return; 
     }
@@ -106,13 +129,9 @@ export default function ConfiguracoesPage() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      // Atualiza o preview forçando o reload da imagem com um timestamp
       const newBrasaoUrl = `/api/v1/portal/configuracoes/brasao?t=${Date.now()}`;
       setFormData(prev => ({ ...prev, urlBrasao: newBrasaoUrl }));
-
-      // Dispara o evento para a Sidebar capturar e atualizar a imagem
       window.dispatchEvent(new Event('horizon:configUpdated'));
-
       setSuccess("Brasão atualizado!");
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -154,9 +173,9 @@ export default function ConfiguracoesPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-20">
           
-          {/* --- PAINEL DE IDENTIDADE VISUAL --- */}
+          {/* PAINEL ESQUERDO: Identidade Visual */}
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
@@ -208,7 +227,7 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
 
-          {/* --- FORMULÁRIO DE DADOS --- */}
+          {/* PAINEL DIREITO: Formulário de Dados */}
           <div className="lg:col-span-2">
             <form onSubmit={handleSave} className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
               
@@ -219,22 +238,17 @@ export default function ConfiguracoesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Nome da Entidade / Município</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={formData.nomeEntidade}
-                      onChange={e => setFormData({...formData, nomeEntidade: e.target.value})}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black transition-all"
-                    />
+                    <input type="text" required value={formData.nomeEntidade} onChange={e => setFormData({...formData, nomeEntidade: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">CNPJ Oficial</label>
                     <input 
                       type="text" 
-                      required
-                      value={formData.cnpj}
-                      onChange={e => setFormData({...formData, cnpj: e.target.value})}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black transition-all"
+                      required 
+                      value={formData.cnpj} 
+                      onChange={e => setFormData({...formData, cnpj: formatCNPJ(e.target.value)})} 
+                      placeholder="00.000.000/0000-00"
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" 
                     />
                   </div>
                 </div>
@@ -247,48 +261,75 @@ export default function ConfiguracoesPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Endereço Completo (Sede)</label>
-                    <input 
-                      type="text" 
-                      value={formData.endereco}
-                      onChange={e => setFormData({...formData, endereco: e.target.value})}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black transition-all"
-                    />
+                    <input type="text" value={formData.endereco} onChange={e => setFormData({...formData, endereco: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                    <div className="relative">
                       <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Telefone / Ouvidoria</label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-2.5 text-slate-400" size={14} />
-                        <input 
-                          type="text" 
-                          value={formData.telefone}
-                          onChange={e => setFormData({...formData, telefone: e.target.value})}
-                          className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black transition-all"
-                        />
-                      </div>
+                      <Phone className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                      <input type="text" value={formData.telefone} onChange={e => setFormData({...formData, telefone: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
                     </div>
-                    <div>
+                    <div className="relative">
                       <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Horário de Atendimento</label>
-                      <div className="relative">
-                        <Clock className="absolute left-3 top-2.5 text-slate-400" size={14} />
-                        <input 
-                          type="text" 
-                          value={formData.horarioAtendimento}
-                          onChange={e => setFormData({...formData, horarioAtendimento: e.target.value})}
-                          className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black transition-all"
-                        />
-                      </div>
+                      <Clock className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                      <input type="text" value={formData.horarioAtendimento} onChange={e => setFormData({...formData, horarioAtendimento: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
                     </div>
                   </div>
                 </div>
               </section>
 
+              {/* SEÇÃO: LINKS OFICIAIS */}
+              <section>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 border-t pt-8">
+                  <Globe size={14} /> Links Oficiais e Serviços
+                </h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="relative">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Site Institucional</label>
+                      <Globe className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                      <input type="url" placeholder="https://" value={formData.siteOficial} onChange={e => setFormData({...formData, siteOficial: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
+                    </div>
+                    <div className="relative">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Diário Oficial</label>
+                      <FileText className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                      <input type="url" placeholder="https://" value={formData.diarioOficial} onChange={e => setFormData({...formData, diarioOficial: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
+                    </div>
+                    <div className="relative md:col-span-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Portal do Contribuinte (Serviços)</label>
+                      <ExternalLink className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                      <input type="url" placeholder="https://" value={formData.portalContribuinte} onChange={e => setFormData({...formData, portalContribuinte: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* SEÇÃO: REDES SOCIAIS */}
+              <section>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 border-t pt-8">
+                  <Globe size={14} /> Redes Sociais
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="relative">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Facebook</label>
+                    <Facebook className="absolute left-3 top-[26px] text-blue-600" size={14} />
+                    <input type="url" placeholder="Link do Perfil/Página" value={formData.facebook} onChange={e => setFormData({...formData, facebook: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
+                  </div>
+                  <div className="relative">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Instagram</label>
+                    <Instagram className="absolute left-3 top-[26px] text-pink-600" size={14} />
+                    <input type="url" placeholder="Link do Perfil" value={formData.instagram} onChange={e => setFormData({...formData, instagram: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
+                  </div>
+                  <div className="relative">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">X (Twitter)</label>
+                    <XLogo className="absolute left-3 top-[26px] text-slate-900" size={14} />
+                    <input type="url" placeholder="Link do Perfil" value={formData.twitter} onChange={e => setFormData({...formData, twitter: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
+                  </div>
+                </div>
+              </section>
+
               <div className="pt-6 border-t border-slate-100 flex justify-end">
-                <button 
-                  type="submit"
-                  disabled={saving}
-                  className="flex items-center px-8 py-3 bg-black text-white rounded-xl font-bold text-xs uppercase hover:bg-slate-800 transition-all shadow-lg disabled:opacity-50"
-                >
+                <button type="submit" disabled={saving} className="flex items-center px-8 py-3 bg-black text-white rounded-xl font-bold text-xs uppercase hover:bg-slate-800 transition-all shadow-lg disabled:opacity-50">
                   {saving ? <Loader2 className="animate-spin mr-2" size={16} /> : <Save className="mr-2" size={16} />}
                   Salvar Configurações
                 </button>

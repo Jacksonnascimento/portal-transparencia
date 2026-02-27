@@ -1,4 +1,4 @@
-// File: C:\Users\ander\OneDrive\Área de Trabalho\portal\portal-transparencia\portal-front\app\receitas\page.tsx
+// File: C:\git\portal-transparencia\portal-front\app\receitas\page.tsx
 import * as entry from '../../../../app/receitas/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

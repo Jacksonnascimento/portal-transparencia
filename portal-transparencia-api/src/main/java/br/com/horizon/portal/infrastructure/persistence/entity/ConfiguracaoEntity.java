@@ -21,4 +21,12 @@ public class ConfiguracaoEntity {
     private String endereco;
     private String telefone;
     private String horarioAtendimento;
+
+    // Novos Campos Adicionados
+    private String siteOficial;
+    private String diarioOficial;
+    private String portalContribuinte;
+    private String facebook;
+    private String instagram;
+    private String twitter;
 }
