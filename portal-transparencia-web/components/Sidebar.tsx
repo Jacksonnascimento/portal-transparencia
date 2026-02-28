@@ -133,11 +133,19 @@ export function Sidebar() {
         </button>
       </nav>
       
-      {/* Footer Horizon AJ com cor fixa exigida */}
-      <div className="p-6 bg-black/20">
-        <h2 className="text-[11px] font-black italic text-center tracking-tighter text-slate-400">
-           HORIZON <span className="text-[#4242d1]">AJ</span>
-        </h2>
+      {/* Footer Horizon AJ com link para o site */}
+      <div className="p-6 bg-black/20 flex justify-center">
+        <a 
+          href="https://horizonaj.com.br/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="hover:opacity-70 transition-opacity cursor-pointer"
+          title="Acessar site da Horizon AJ"
+        >
+          <h2 className="text-[11px] font-black italic text-center tracking-tighter text-slate-400">
+             HORIZON <span className="text-[#4242d1]">AJ</span>
+          </h2>
+        </a>
       </div>
     </aside>
   );
