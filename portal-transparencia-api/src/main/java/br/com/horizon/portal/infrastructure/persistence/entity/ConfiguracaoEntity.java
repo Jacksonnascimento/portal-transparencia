@@ -22,11 +22,17 @@ public class ConfiguracaoEntity {
     private String telefone;
     private String horarioAtendimento;
 
-    // Novos Campos Adicionados
+    
     private String siteOficial;
     private String diarioOficial;
     private String portalContribuinte;
     private String facebook;
     private String instagram;
     private String twitter;
+
+ 
+    private String emailEntidade;
+    private String linkOuvidoria;
+    private String telefoneOuvidoria;
+    private String emailOuvidoria;
 }

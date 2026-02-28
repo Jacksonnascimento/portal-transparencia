@@ -17,14 +17,20 @@ public class ConfiguracaoDTO {
             String portalContribuinte,
             String facebook,
             String instagram,
-            String twitter
+            String twitter,
+            // Novos campos
+            String emailEntidade,
+            String linkOuvidoria,
+            String telefoneOuvidoria,
+            String emailOuvidoria
     ) {
         public static Response fromEntity(ConfiguracaoEntity e) {
             return new Response(
                 e.getNomeEntidade(), e.getCnpj(), e.getUrlBrasao(),
                 e.getCorPrincipal(), e.getEndereco(), e.getTelefone(), e.getHorarioAtendimento(),
                 e.getSiteOficial(), e.getDiarioOficial(), e.getPortalContribuinte(),
-                e.getFacebook(), e.getInstagram(), e.getTwitter()
+                e.getFacebook(), e.getInstagram(), e.getTwitter(),
+                e.getEmailEntidade(), e.getLinkOuvidoria(), e.getTelefoneOuvidoria(), e.getEmailOuvidoria()
             );
         }
     }
@@ -41,6 +47,11 @@ public class ConfiguracaoDTO {
             String portalContribuinte,
             String facebook,
             String instagram,
-            String twitter
+            String twitter,
+            // Novos campos
+            String emailEntidade,
+            String linkOuvidoria,
+            String telefoneOuvidoria,
+            String emailOuvidoria
     ) {}
 }

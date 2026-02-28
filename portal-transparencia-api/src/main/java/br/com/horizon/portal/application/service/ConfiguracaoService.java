@@ -35,13 +35,18 @@ public class ConfiguracaoService {
         entity.setTelefone(dto.telefone());
         entity.setHorarioAtendimento(dto.horarioAtendimento());
         
-        // Novos Campos
         entity.setSiteOficial(dto.siteOficial());
         entity.setDiarioOficial(dto.diarioOficial());
         entity.setPortalContribuinte(dto.portalContribuinte());
         entity.setFacebook(dto.facebook());
         entity.setInstagram(dto.instagram());
         entity.setTwitter(dto.twitter());
+
+       
+        entity.setEmailEntidade(dto.emailEntidade());
+        entity.setLinkOuvidoria(dto.linkOuvidoria());
+        entity.setTelefoneOuvidoria(dto.telefoneOuvidoria());
+        entity.setEmailOuvidoria(dto.emailOuvidoria());
 
         return ConfiguracaoDTO.Response.fromEntity(repository.save(entity));
     }
