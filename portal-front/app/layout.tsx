@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Inter } from 'next/font/google';
 import { 
   Landmark, Mail, Phone, MapPin, Facebook, Instagram, Twitter,
-  Accessibility, ZoomIn, ZoomOut, Contrast, Palette, EyeOff, Link as LinkIcon, Type, RotateCcw, X, MessageSquare, ShieldCheck
+  Accessibility, ZoomIn, ZoomOut, Contrast, Palette, EyeOff, Link as LinkIcon, Type, RotateCcw, X, MessageSquare, ShieldCheck, Clock
 } from 'lucide-react';
 import Link from 'next/link';
 import api from '../services/api';
@@ -36,7 +36,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       .catch(err => console.error("Erro ao carregar configurações", err))
       .finally(() => setIsConfigLoaded(true));
 
-    // Verifica LGPD: se o usuário já aceitou os cookies antes
     if (!localStorage.getItem('lgpd_cookies_accepted')) {
       setShowCookies(true);
     }
@@ -67,6 +66,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const resetA11y = () => {
     setZoomLevel(100); setIsGrayscale(false); setIsHighContrast(false);
     setIsNegative(false); setIsUnderlined(false); setIsLegibleFont(false);
+  };
+
+  const openSocial = (url?: string) => {
+    if (url) window.open(url, '_blank');
   };
 
   return (
@@ -121,7 +124,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <img src={`${brasaoUrl}?t=${new Date().getTime()}`} alt="Brasão" className="max-h-full w-auto object-contain" onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/150?text=Logo")}/>
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-900 uppercase leading-none tracking-tighter">{config?.nomeEnte || 'Prefeitura Municipal'}</h1>
+                <h1 className="text-xl font-black text-slate-900 uppercase leading-none tracking-tighter">{config?.nomeEntidade || 'Prefeitura Municipal'}</h1>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="bg-[var(--cor-primaria)] text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Portal da Transparência</span>
                   {config?.cnpj && <span className="text-slate-400 text-[10px] font-bold">CNPJ: {config.cnpj}</span>}
@@ -154,36 +157,42 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div>
                 <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Contato</h4>
                 <ul className="space-y-4">
-                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium"><Phone size={16} className="text-[var(--cor-primaria)]" /> {config?.telefone || '(00) 0000-0000'}</li>
-                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium"><Mail size={16} className="text-[var(--cor-primaria)]" /> {config?.emailContato || 'contato@municipio.gov.br'}</li>
-                  <li className="flex items-start gap-3 text-sm text-slate-500 font-medium"><MapPin size={16} className="text-[var(--cor-primaria)] shrink-0" /> {config?.endereco || 'Endereço não configurado'}</li>
+                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium"><Phone size={16} className="text-[var(--cor-primaria)] shrink-0" /> {config?.telefone || '(00) 0000-0000'}</li>
+                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium break-all"><Mail size={16} className="text-[var(--cor-primaria)] shrink-0" /> {config?.emailEntidade || 'contato@municipio.gov.br'}</li>
+                  <li className="flex items-start gap-3 text-sm text-slate-500 font-medium"><MapPin size={16} className="text-[var(--cor-primaria)] shrink-0 mt-0.5" /> {config?.endereco || 'Endereço não configurado'}</li>
+                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium"><Clock size={16} className="text-[var(--cor-primaria)] shrink-0" /> {config?.horarioAtendimento || '08h às 14h'}</li>
                 </ul>
               </div>
 
               <div>
                 <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Ouvidoria</h4>
                 <ul className="space-y-4">
-                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium"><MessageSquare size={16} className="text-[var(--cor-primaria)]" /> {config?.ouvidoriaNome || 'Ouvidoria Geral'}</li>
-                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium"><Phone size={16} className="text-[var(--cor-primaria)]" /> {config?.ouvidoriaTelefone || '156'}</li>
-                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium"><Mail size={16} className="text-[var(--cor-primaria)]" /> {config?.ouvidoriaEmail || 'ouvidoria@municipio.gov.br'}</li>
+                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium">
+                    <MessageSquare size={16} className="text-[var(--cor-primaria)] shrink-0" /> 
+                    {config?.linkOuvidoria ? (
+                      <a href={config.linkOuvidoria} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--cor-primaria)] transition-colors">Acessar Sistema de Ouvidoria</a>
+                    ) : 'Ouvidoria Geral'}
+                  </li>
+                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium"><Phone size={16} className="text-[var(--cor-primaria)] shrink-0" /> {config?.telefoneOuvidoria || '156'}</li>
+                  <li className="flex items-center gap-3 text-sm text-slate-500 font-medium break-all"><Mail size={16} className="text-[var(--cor-primaria)] shrink-0" /> {config?.emailOuvidoria || 'ouvidoria@municipio.gov.br'}</li>
                 </ul>
               </div>
 
               <div>
                 <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Links Úteis</h4>
                 <ul className="space-y-4">
-                  <li><Link href="#" className="text-sm text-slate-500 hover:text-[var(--cor-primaria)] font-medium transition-colors">Site Oficial</Link></li>
-                  <li><Link href="#" className="text-sm text-slate-500 hover:text-[var(--cor-primaria)] font-medium transition-colors">Diário Oficial</Link></li>
-                  <li><Link href="#" className="text-sm text-slate-500 hover:text-[var(--cor-primaria)] font-medium transition-colors">Portal do Contribuinte</Link></li>
+                  <li><a href={config?.siteOficial || '#'} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-500 hover:text-[var(--cor-primaria)] font-medium transition-colors">Site Oficial</a></li>
+                  <li><a href={config?.diarioOficial || '#'} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-500 hover:text-[var(--cor-primaria)] font-medium transition-colors">Diário Oficial</a></li>
+                  <li><a href={config?.portalContribuinte || '#'} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-500 hover:text-[var(--cor-primaria)] font-medium transition-colors">Portal do Contribuinte</a></li>
                 </ul>
               </div>
 
               <div>
                 <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Redes Oficiais</h4>
                 <div className="flex gap-4">
-                  <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-[var(--cor-primaria)] hover:bg-[var(--cor-primaria-fundo)] transition-all"><Facebook size={20} /></button>
-                  <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-[var(--cor-primaria)] hover:bg-[var(--cor-primaria-fundo)] transition-all"><Instagram size={20} /></button>
-                  <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-slate-900 hover:bg-slate-200 transition-all"><Twitter size={20} /></button>
+                  <button onClick={() => openSocial(config?.facebook)} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-[var(--cor-primaria)] hover:bg-[var(--cor-primaria-fundo)] transition-all cursor-pointer"><Facebook size={20} /></button>
+                  <button onClick={() => openSocial(config?.instagram)} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-[var(--cor-primaria)] hover:bg-[var(--cor-primaria-fundo)] transition-all cursor-pointer"><Instagram size={20} /></button>
+                  <button onClick={() => openSocial(config?.twitter)} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-slate-900 hover:bg-slate-200 transition-all cursor-pointer"><Twitter size={20} /></button>
                 </div>
               </div>
             </div>
@@ -191,12 +200,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="flex flex-col md:flex-row items-center gap-4">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  © 2026 {config?.nomeEnte || 'Prefeitura Municipal'} • Todos os direitos reservados
+                  © 2026 {config?.nomeEntidade || 'Prefeitura Municipal'} • Todos os direitos reservados
                 </p>
-                {/* LINKS DA LGPD */}
                 <div className="flex gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-l-0 md:border-l border-slate-200 md:pl-4">
                   <Link href="/privacidade" className="hover:text-[var(--cor-primaria)] transition-colors">Política de Privacidade</Link>
-                  <Link href="/termos" className="hover:text-[var(--cor-primaria)] transition-colors">Termos de Uso</Link>
+                  <Link href="/termo" className="hover:text-[var(--cor-primaria)] transition-colors">Termos de Uso</Link>
                 </div>
               </div>
               
