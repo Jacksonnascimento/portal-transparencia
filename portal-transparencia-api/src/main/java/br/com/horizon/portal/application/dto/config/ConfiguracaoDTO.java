@@ -11,12 +11,26 @@ public class ConfiguracaoDTO {
             String corPrincipal,
             String endereco,
             String telefone,
-            String horarioAtendimento
+            String horarioAtendimento,
+            String siteOficial,
+            String diarioOficial,
+            String portalContribuinte,
+            String facebook,
+            String instagram,
+            String twitter,
+            // Novos campos
+            String emailEntidade,
+            String linkOuvidoria,
+            String telefoneOuvidoria,
+            String emailOuvidoria
     ) {
         public static Response fromEntity(ConfiguracaoEntity e) {
             return new Response(
                 e.getNomeEntidade(), e.getCnpj(), e.getUrlBrasao(),
-                e.getCorPrincipal(), e.getEndereco(), e.getTelefone(), e.getHorarioAtendimento()
+                e.getCorPrincipal(), e.getEndereco(), e.getTelefone(), e.getHorarioAtendimento(),
+                e.getSiteOficial(), e.getDiarioOficial(), e.getPortalContribuinte(),
+                e.getFacebook(), e.getInstagram(), e.getTwitter(),
+                e.getEmailEntidade(), e.getLinkOuvidoria(), e.getTelefoneOuvidoria(), e.getEmailOuvidoria()
             );
         }
     }
@@ -27,6 +41,17 @@ public class ConfiguracaoDTO {
             String corPrincipal,
             String endereco,
             String telefone,
-            String horarioAtendimento
+            String horarioAtendimento,
+            String siteOficial,
+            String diarioOficial,
+            String portalContribuinte,
+            String facebook,
+            String instagram,
+            String twitter,
+            // Novos campos
+            String emailEntidade,
+            String linkOuvidoria,
+            String telefoneOuvidoria,
+            String emailOuvidoria
     ) {}
 }

@@ -102,11 +102,23 @@ CREATE TABLE IF NOT EXISTS tb_configuracao_portal (
     nome_entidade VARCHAR(255),
     cnpj VARCHAR(20),
     url_brasao VARCHAR(255),
-    cor_principal VARCHAR(7), -- Para guardar o Hexadecimal (ex: #0F172A)
+    cor_principal VARCHAR(7),
     endereco VARCHAR(255),
     telefone VARCHAR(20),
-    horario_atendimento VARCHAR(100)
+    horario_atendimento VARCHAR(100),
+    site_oficial VARCHAR(255),
+    diario_oficial VARCHAR(255),
+    portal_contribuinte VARCHAR(255),
+    facebook VARCHAR(255),
+    instagram VARCHAR(255),
+    twitter VARCHAR(255),
+    -- Novos campos de Contato e Ouvidoria (LAI)
+    email_entidade VARCHAR(255),
+    link_ouvidoria VARCHAR(255),
+    telefone_ouvidoria VARCHAR(20),
+    email_ouvidoria VARCHAR(255)
 );
+
 
 -- Seed Inicial (Garante que o ID 1 sempre exista)
 INSERT INTO tb_configuracao_portal (id, nome_entidade, cnpj, cor_principal, endereco, telefone, horario_atendimento)

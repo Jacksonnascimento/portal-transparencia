@@ -1,9 +1,11 @@
 package br.com.horizon.portal.application.service;
 
 import br.com.horizon.portal.application.dto.config.ConfiguracaoDTO;
+import br.com.horizon.portal.infrastructure.audit.LogAuditoriaEvent;
 import br.com.horizon.portal.infrastructure.persistence.entity.ConfiguracaoEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.ConfiguracaoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,6 +18,7 @@ import java.nio.file.*;
 public class ConfiguracaoService {
 
     private final ConfiguracaoRepository repository;
+    private final ApplicationEventPublisher eventPublisher; // Injeção do publicador de eventos
     private final String PASTA_IMAGENS = System.getProperty("user.dir") + File.separator + "Imagens";
 
     public ConfiguracaoDTO.Response obterConfiguracao() {
@@ -28,19 +31,41 @@ public class ConfiguracaoService {
     public ConfiguracaoDTO.Response atualizar(ConfiguracaoDTO.Update dto) {
         ConfiguracaoEntity entity = repository.findById(1L).orElseThrow();
         
+        // 1. Captura o estado ANTERIOR para a Auditoria
+        ConfiguracaoDTO.Response estadoAnterior = ConfiguracaoDTO.Response.fromEntity(entity);
+        
+        // 2. Aplica as alterações
         entity.setNomeEntidade(dto.nomeEntidade());
         entity.setCnpj(dto.cnpj());
         entity.setCorPrincipal(dto.corPrincipal());
         entity.setEndereco(dto.endereco());
         entity.setTelefone(dto.telefone());
         entity.setHorarioAtendimento(dto.horarioAtendimento());
+        
+        entity.setSiteOficial(dto.siteOficial());
+        entity.setDiarioOficial(dto.diarioOficial());
+        entity.setPortalContribuinte(dto.portalContribuinte());
+        entity.setFacebook(dto.facebook());
+        entity.setInstagram(dto.instagram());
+        entity.setTwitter(dto.twitter());
 
-        return ConfiguracaoDTO.Response.fromEntity(repository.save(entity));
+        entity.setEmailEntidade(dto.emailEntidade());
+        entity.setLinkOuvidoria(dto.linkOuvidoria());
+        entity.setTelefoneOuvidoria(dto.telefoneOuvidoria());
+        entity.setEmailOuvidoria(dto.emailOuvidoria());
+
+        // 3. Salva e captura o NOVO estado
+        ConfiguracaoEntity savedEntity = repository.save(entity);
+        ConfiguracaoDTO.Response estadoNovo = ConfiguracaoDTO.Response.fromEntity(savedEntity);
+
+        // 4. Dispara o log de auditoria
+        eventPublisher.publishEvent(new LogAuditoriaEvent("ATUALIZACAO", "CONFIGURACAO", "1", estadoAnterior, estadoNovo));
+
+        return estadoNovo;
     }
 
     @Transactional
     public String salvarBrasao(MultipartFile file) {
-        // --- NOVA VALIDAÇÃO DE TAMANHO (Limite de 2MB) ---
         long MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 Megabytes
         if (file.getSize() > MAX_SIZE_BYTES) {
             throw new RuntimeException("Ficheiro recusado: O tamanho do brasão excede o limite máximo de 2MB.");
@@ -50,7 +75,6 @@ public class ConfiguracaoService {
             File diretorio = new File(PASTA_IMAGENS);
             if (!diretorio.exists()) diretorio.mkdirs();
 
-            // 1. Limpeza total: Apaga qualquer ficheiro anterior que seja um brasão
             File[] arquivosAntigos = diretorio.listFiles((dir, name) -> name.startsWith("brasao"));
             if (arquivosAntigos != null) {
                 for (File f : arquivosAntigos) {
@@ -58,7 +82,6 @@ public class ConfiguracaoService {
                 }
             }
 
-            // 2. Extrai a extensão e nomeia cravado como "brasao"
             String extensao = "";
             String originalName = file.getOriginalFilename();
             if (originalName != null && originalName.contains(".")) {
@@ -68,13 +91,18 @@ public class ConfiguracaoService {
             String nomeArquivo = "brasao" + extensao;
             Path caminho = Paths.get(PASTA_IMAGENS, nomeArquivo);
             
-            // 3. Salva o novo ficheiro
             Files.copy(file.getInputStream(), caminho, StandardCopyOption.REPLACE_EXISTING);
 
-            // 4. Atualiza o banco
             ConfiguracaoEntity entity = repository.findById(1L).orElseThrow();
+            
+            // Captura estado anterior da URL
+            String urlAntiga = entity.getUrlBrasao();
+            
             entity.setUrlBrasao("/api/v1/portal/configuracoes/brasao");
             repository.save(entity);
+            
+            // Dispara log apenas da alteração do brasão
+            eventPublisher.publishEvent(new LogAuditoriaEvent("ATUALIZACAO_BRASAO", "CONFIGURACAO", "1", urlAntiga, entity.getUrlBrasao()));
             
             return entity.getUrlBrasao();
         } catch (Exception e) {
