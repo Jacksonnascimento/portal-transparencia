@@ -35,4 +35,10 @@ public class ConfiguracaoEntity {
     private String linkOuvidoria;
     private String telefoneOuvidoria;
     private String emailOuvidoria;
+
+    @Column(columnDefinition = "TEXT")
+    private String politicaPrivacidade;
+
+    @Column(columnDefinition = "TEXT")
+    private String termosUso;
 }

@@ -22,7 +22,9 @@ public class ConfiguracaoDTO {
             String emailEntidade,
             String linkOuvidoria,
             String telefoneOuvidoria,
-            String emailOuvidoria
+            String emailOuvidoria,
+            String politicaPrivacidade,
+            String termosUso
     ) {
         public static Response fromEntity(ConfiguracaoEntity e) {
             return new Response(
@@ -30,7 +32,9 @@ public class ConfiguracaoDTO {
                 e.getCorPrincipal(), e.getEndereco(), e.getTelefone(), e.getHorarioAtendimento(),
                 e.getSiteOficial(), e.getDiarioOficial(), e.getPortalContribuinte(),
                 e.getFacebook(), e.getInstagram(), e.getTwitter(),
-                e.getEmailEntidade(), e.getLinkOuvidoria(), e.getTelefoneOuvidoria(), e.getEmailOuvidoria()
+                e.getEmailEntidade(), e.getLinkOuvidoria(), e.getTelefoneOuvidoria(), e.getEmailOuvidoria(),
+                e.getPoliticaPrivacidade(),
+                e.getTermosUso()
             );
         }
     }
@@ -48,10 +52,12 @@ public class ConfiguracaoDTO {
             String facebook,
             String instagram,
             String twitter,
-            // Novos campos
+            
             String emailEntidade,
             String linkOuvidoria,
             String telefoneOuvidoria,
-            String emailOuvidoria
+            String emailOuvidoria,
+            String politicaPrivacidade,
+            String termosUso
     ) {}
 }

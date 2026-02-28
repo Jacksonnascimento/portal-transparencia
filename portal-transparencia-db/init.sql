@@ -116,13 +116,54 @@ CREATE TABLE IF NOT EXISTS tb_configuracao_portal (
     email_entidade VARCHAR(255),
     link_ouvidoria VARCHAR(255),
     telefone_ouvidoria VARCHAR(20),
-    email_ouvidoria VARCHAR(255)
+    email_ouvidoria VARCHAR(255),
+	politica_privacidade TEXT,
+    termos_uso TEXT
 );
 
 
--- Seed Inicial (Garante que o ID 1 sempre exista)
-INSERT INTO tb_configuracao_portal (id, nome_entidade, cnpj, cor_principal, endereco, telefone, horario_atendimento)
-SELECT 1, 'Horizon Transparência', '00.000.000/0001-00', '#0F172A', 'Rua Exemplo, 123', '(00) 0000-0000', '08h às 14h'
+INSERT INTO tb_configuracao_portal (
+    id, 
+    nome_entidade, 
+    cnpj, 
+    cor_principal, 
+    endereco, 
+    telefone, 
+    horario_atendimento,
+    politica_privacidade,
+    termos_uso
+)
+SELECT 
+    1, 
+    'Horizon Transparência', 
+    '00.000.000/0001-00', 
+    '#0F172A', 
+    'Rua Exemplo, 123', 
+    '(00) 0000-0000', 
+    '08h às 14h',
+    '1. Objetivo e Escopo
+Esta Política de Privacidade estabelece o compromisso do Portal com a segurança e a proteção de dados pessoais, em estrita conformidade com a LGPD (Lei nº 13.709/2018).
+
+2. Coleta de Dados
+A navegação nas páginas de transparência ativa é pública e anônima. Dados pessoais são coletados estritamente quando o cidadão utiliza a Ouvidoria ou o e-SIC.
+
+3. Uso e Compartilhamento
+A Administração Pública não comercializa ou compartilha dados pessoais com entidades privadas, exceto por determinação judicial.
+
+4. Direitos do Titular
+O cidadão pode solicitar a confirmação, correção ou exclusão de seus dados pessoais armazenados nos canais de atendimento.',
+    
+    '1. Aceitação e Finalidade
+Este portal visa assegurar o cumprimento da Lei de Acesso à Informação (LAI - Lei nº 12.527/2011), promovendo o controle social.
+
+2. Dados Abertos
+Todas as informações financeiras disponibilizadas são públicas. É permitido o uso e reprodução desses dados, desde que citada a fonte.
+
+3. Responsabilidades do Usuário
+O usuário compromete-se a utilizar as informações de forma ética. É proibida a utilização de scripts maliciosos que visem indisponibilizar a prestação de contas.
+
+4. Disponibilidade
+A Administração empenha-se em garantir a integridade dos dados e a disponibilidade do portal.'
 WHERE NOT EXISTS (SELECT 1 FROM tb_configuracao_portal WHERE id = 1);
 
 

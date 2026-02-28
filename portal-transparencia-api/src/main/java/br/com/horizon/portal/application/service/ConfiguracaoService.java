@@ -29,37 +29,44 @@ public class ConfiguracaoService {
 
     @Transactional
     public ConfiguracaoDTO.Response atualizar(ConfiguracaoDTO.Update dto) {
-        ConfiguracaoEntity entity = repository.findById(1L).orElseThrow();
-        
-        // 1. Captura o estado ANTERIOR para a Auditoria
+        ConfiguracaoEntity entity = repository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("Configuração não encontrada."));
+
+        // Captura estado anterior para o Log de Auditoria
         ConfiguracaoDTO.Response estadoAnterior = ConfiguracaoDTO.Response.fromEntity(entity);
-        
-        // 2. Aplica as alterações
+
+        // Mapeamento dos campos (incluindo os novos)
         entity.setNomeEntidade(dto.nomeEntidade());
         entity.setCnpj(dto.cnpj());
         entity.setCorPrincipal(dto.corPrincipal());
         entity.setEndereco(dto.endereco());
         entity.setTelefone(dto.telefone());
         entity.setHorarioAtendimento(dto.horarioAtendimento());
-        
         entity.setSiteOficial(dto.siteOficial());
         entity.setDiarioOficial(dto.diarioOficial());
         entity.setPortalContribuinte(dto.portalContribuinte());
         entity.setFacebook(dto.facebook());
         entity.setInstagram(dto.instagram());
         entity.setTwitter(dto.twitter());
-
         entity.setEmailEntidade(dto.emailEntidade());
         entity.setLinkOuvidoria(dto.linkOuvidoria());
         entity.setTelefoneOuvidoria(dto.telefoneOuvidoria());
         entity.setEmailOuvidoria(dto.emailOuvidoria());
 
-        // 3. Salva e captura o NOVO estado
-        ConfiguracaoEntity savedEntity = repository.save(entity);
-        ConfiguracaoDTO.Response estadoNovo = ConfiguracaoDTO.Response.fromEntity(savedEntity);
+        // Novos campos LGPD (Rich Text vindo do Front)
+        entity.setPoliticaPrivacidade(dto.politicaPrivacidade());
+        entity.setTermosUso(dto.termosUso());
 
-        // 4. Dispara o log de auditoria
-        eventPublisher.publishEvent(new LogAuditoriaEvent("ATUALIZACAO", "CONFIGURACAO", "1", estadoAnterior, estadoNovo));
+        ConfiguracaoEntity saved = repository.save(entity);
+        ConfiguracaoDTO.Response estadoNovo = ConfiguracaoDTO.Response.fromEntity(saved);
+
+        // Dispara Auditoria Independente
+        eventPublisher.publishEvent(new LogAuditoriaEvent(
+                "ATUALIZACAO",
+                "CONFIGURACAO",
+                "1",
+                estadoAnterior,
+                estadoNovo));
 
         return estadoNovo;
     }
@@ -73,7 +80,8 @@ public class ConfiguracaoService {
 
         try {
             File diretorio = new File(PASTA_IMAGENS);
-            if (!diretorio.exists()) diretorio.mkdirs();
+            if (!diretorio.exists())
+                diretorio.mkdirs();
 
             File[] arquivosAntigos = diretorio.listFiles((dir, name) -> name.startsWith("brasao"));
             if (arquivosAntigos != null) {
@@ -87,23 +95,24 @@ public class ConfiguracaoService {
             if (originalName != null && originalName.contains(".")) {
                 extensao = originalName.substring(originalName.lastIndexOf("."));
             }
-            
+
             String nomeArquivo = "brasao" + extensao;
             Path caminho = Paths.get(PASTA_IMAGENS, nomeArquivo);
-            
+
             Files.copy(file.getInputStream(), caminho, StandardCopyOption.REPLACE_EXISTING);
 
             ConfiguracaoEntity entity = repository.findById(1L).orElseThrow();
-            
+
             // Captura estado anterior da URL
             String urlAntiga = entity.getUrlBrasao();
-            
+
             entity.setUrlBrasao("/api/v1/portal/configuracoes/brasao");
             repository.save(entity);
-            
+
             // Dispara log apenas da alteração do brasão
-            eventPublisher.publishEvent(new LogAuditoriaEvent("ATUALIZACAO_BRASAO", "CONFIGURACAO", "1", urlAntiga, entity.getUrlBrasao()));
-            
+            eventPublisher.publishEvent(
+                    new LogAuditoriaEvent("ATUALIZACAO_BRASAO", "CONFIGURACAO", "1", urlAntiga, entity.getUrlBrasao()));
+
             return entity.getUrlBrasao();
         } catch (Exception e) {
             throw new RuntimeException("Erro ao processar arquivo: " + e.getMessage());
