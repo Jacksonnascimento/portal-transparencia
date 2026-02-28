@@ -1,9 +1,11 @@
 package br.com.horizon.portal.application.service;
 
 import br.com.horizon.portal.application.dto.config.ConfiguracaoDTO;
+import br.com.horizon.portal.infrastructure.audit.LogAuditoriaEvent;
 import br.com.horizon.portal.infrastructure.persistence.entity.ConfiguracaoEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.ConfiguracaoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,6 +18,7 @@ import java.nio.file.*;
 public class ConfiguracaoService {
 
     private final ConfiguracaoRepository repository;
+    private final ApplicationEventPublisher eventPublisher; // Injeção do publicador de eventos
     private final String PASTA_IMAGENS = System.getProperty("user.dir") + File.separator + "Imagens";
 
     public ConfiguracaoDTO.Response obterConfiguracao() {
@@ -28,6 +31,10 @@ public class ConfiguracaoService {
     public ConfiguracaoDTO.Response atualizar(ConfiguracaoDTO.Update dto) {
         ConfiguracaoEntity entity = repository.findById(1L).orElseThrow();
         
+        // 1. Captura o estado ANTERIOR para a Auditoria
+        ConfiguracaoDTO.Response estadoAnterior = ConfiguracaoDTO.Response.fromEntity(entity);
+        
+        // 2. Aplica as alterações
         entity.setNomeEntidade(dto.nomeEntidade());
         entity.setCnpj(dto.cnpj());
         entity.setCorPrincipal(dto.corPrincipal());
@@ -42,13 +49,19 @@ public class ConfiguracaoService {
         entity.setInstagram(dto.instagram());
         entity.setTwitter(dto.twitter());
 
-       
         entity.setEmailEntidade(dto.emailEntidade());
         entity.setLinkOuvidoria(dto.linkOuvidoria());
         entity.setTelefoneOuvidoria(dto.telefoneOuvidoria());
         entity.setEmailOuvidoria(dto.emailOuvidoria());
 
-        return ConfiguracaoDTO.Response.fromEntity(repository.save(entity));
+        // 3. Salva e captura o NOVO estado
+        ConfiguracaoEntity savedEntity = repository.save(entity);
+        ConfiguracaoDTO.Response estadoNovo = ConfiguracaoDTO.Response.fromEntity(savedEntity);
+
+        // 4. Dispara o log de auditoria
+        eventPublisher.publishEvent(new LogAuditoriaEvent("ATUALIZACAO", "CONFIGURACAO", "1", estadoAnterior, estadoNovo));
+
+        return estadoNovo;
     }
 
     @Transactional
@@ -81,8 +94,15 @@ public class ConfiguracaoService {
             Files.copy(file.getInputStream(), caminho, StandardCopyOption.REPLACE_EXISTING);
 
             ConfiguracaoEntity entity = repository.findById(1L).orElseThrow();
+            
+            // Captura estado anterior da URL
+            String urlAntiga = entity.getUrlBrasao();
+            
             entity.setUrlBrasao("/api/v1/portal/configuracoes/brasao");
             repository.save(entity);
+            
+            // Dispara log apenas da alteração do brasão
+            eventPublisher.publishEvent(new LogAuditoriaEvent("ATUALIZACAO_BRASAO", "CONFIGURACAO", "1", urlAntiga, entity.getUrlBrasao()));
             
             return entity.getUrlBrasao();
         } catch (Exception e) {

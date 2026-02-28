@@ -1,9 +1,11 @@
 package br.com.horizon.portal.application.service; 
 
 import br.com.horizon.portal.application.dto.usuario.UsuarioDTO;
+import br.com.horizon.portal.infrastructure.audit.LogAuditoriaEvent;
 import br.com.horizon.portal.infrastructure.persistence.entity.UsuarioEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,7 @@ public class UsuarioService {
 
     private final UsuarioRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher; // Injeção do publicador de eventos
 
     public List<UsuarioDTO.Response> listarTodos() {
         return repository.findAll().stream()
@@ -44,7 +47,12 @@ public class UsuarioService {
                 .build();
 
         novoUsuario = repository.save(novoUsuario);
-        return UsuarioDTO.Response.fromEntity(novoUsuario);
+        UsuarioDTO.Response response = UsuarioDTO.Response.fromEntity(novoUsuario);
+
+        // Dispara auditoria
+        eventPublisher.publishEvent(new LogAuditoriaEvent("CRIACAO", "USUARIO", novoUsuario.getId().toString(), null, response));
+
+        return response;
     }
 
     @Transactional
@@ -56,11 +64,20 @@ public class UsuarioService {
             throw new IllegalArgumentException("E-mail já está em uso por outro usuário.");
         }
 
+        // Estado Anterior
+        UsuarioDTO.Response estadoAnterior = UsuarioDTO.Response.fromEntity(usuario);
+
         usuario.setNome(dto.nome());
         usuario.setEmail(dto.email());
         usuario.setRole(dto.role().toUpperCase());
 
-        return UsuarioDTO.Response.fromEntity(repository.save(usuario));
+        UsuarioEntity savedUsuario = repository.save(usuario);
+        UsuarioDTO.Response estadoNovo = UsuarioDTO.Response.fromEntity(savedUsuario);
+
+        // Dispara auditoria
+        eventPublisher.publishEvent(new LogAuditoriaEvent("ATUALIZACAO", "USUARIO", savedUsuario.getId().toString(), estadoAnterior, estadoNovo));
+
+        return estadoNovo;
     }
 
     @Transactional
@@ -68,8 +85,14 @@ public class UsuarioService {
         UsuarioEntity usuario = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
         
+        UsuarioDTO.Response estadoAnterior = UsuarioDTO.Response.fromEntity(usuario);
+        
         usuario.setAtivo(!usuario.getAtivo());
-        repository.save(usuario);
+        UsuarioEntity savedUsuario = repository.save(usuario);
+        UsuarioDTO.Response estadoNovo = UsuarioDTO.Response.fromEntity(savedUsuario);
+
+        // Dispara auditoria
+        eventPublisher.publishEvent(new LogAuditoriaEvent("ALTERACAO_STATUS", "USUARIO", savedUsuario.getId().toString(), estadoAnterior, estadoNovo));
     }
 
     @Transactional
@@ -79,5 +102,8 @@ public class UsuarioService {
 
         usuario.setSenha(passwordEncoder.encode(novaSenha));
         repository.save(usuario);
+
+        // Dispara auditoria ocultando as senhas para proteger a base de logs
+        eventPublisher.publishEvent(new LogAuditoriaEvent("ALTERACAO_SENHA", "USUARIO", usuario.getId().toString(), "[OCULTO POR SEGURANÇA]", "[OCULTO POR SEGURANÇA]"));
     }
 }

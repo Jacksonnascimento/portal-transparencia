@@ -7,6 +7,8 @@ import { Sidebar } from '@/components/Sidebar';
 import { 
   ChevronLeft, 
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   AlertCircle,
   X,
   History,
@@ -14,7 +16,9 @@ import {
   AlertTriangle,
   Eye,
   ShieldCheck,
-  CheckCircle
+  CheckCircle,
+  Lock,
+  Search
 } from 'lucide-react';
 
 // --- INTERFACES ---
@@ -24,8 +28,8 @@ interface LogAuditoria {
   acao: string;
   entidade: string;
   entidadeId: string;
-  dadosAnteriores?: string; // Onde guardamos a lista de excluídos
-  dadosNovos?: string;      // Onde guardamos o resumo da importação
+  dadosAnteriores?: string; 
+  dadosNovos?: string;      
   dataHora: any;
   ipOrigem: string;
 }
@@ -48,20 +52,107 @@ const ModalPortal = ({ children }: { children: React.ReactNode }) => {
   return createPortal(children, modalRoot);
 };
 
+// --- RENDERIZADOR DINÂMICO DE JSON ---
+const RenderizadorJSON = ({ data }: { data?: string }) => {
+  if (!data) return <span className="text-slate-400 italic">Sem detalhes adicionais registrados.</span>;
+  if (data === '"[OCULTO POR SEGURANÇA]"' || data === '[OCULTO POR SEGURANÇA]') {
+    return (
+      <div className="flex items-center gap-2 px-4 py-3 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg w-max">
+        <Lock size={16} className="text-slate-500" />
+        <span className="font-bold font-mono text-xs tracking-widest uppercase">Dado Sensível Oculto (LGPD)</span>
+      </div>
+    );
+  }
+
+  try {
+    let parsed = JSON.parse(data);
+    if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Object.entries(parsed).map(([key, value]) => (
+            <div key={key} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{key}</span>
+              <span className="font-mono text-xs font-bold text-slate-800 break-all">
+                {value === null || value === '' ? <span className="text-slate-300 italic">vazio</span> : String(value)}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return <pre className="text-xs font-mono bg-slate-100 p-4 rounded-lg border border-slate-200 overflow-x-auto text-slate-700">{JSON.stringify(parsed, null, 2)}</pre>;
+  } catch (e) {
+    return <span className="font-mono text-xs text-slate-700 break-all">{data}</span>;
+  }
+};
+
+// --- MAPA DINÂMICO DE AÇÕES POR ENTIDADE ---
+const ACOES_POR_ENTIDADE: Record<string, { value: string, label: string }[]> = {
+  "CONFIGURACAO": [
+    { value: "ATUALIZACAO", label: "ATUALIZAÇÃO" },
+    { value: "ATUALIZACAO_BRASAO", label: "ATUALIZAÇÃO DE BRASÃO" }
+  ],
+  "USUARIO": [
+    { value: "CRIACAO", label: "CRIAÇÃO" },
+    { value: "ATUALIZACAO", label: "ATUALIZAÇÃO" },
+    { value: "ALTERACAO_SENHA", label: "ALTERAÇÃO DE SENHA" },
+    { value: "ALTERACAO_STATUS", label: "ALTERAÇÃO DE STATUS" }
+  ],
+  "RECEITA": [
+    { value: "IMPORTACAO_LOTE_CSV", label: "IMPORTAÇÃO (CSV)" },
+    { value: "EXCLUSAO_LOTE_RECEITA", label: "EXCLUSÃO / ROLLBACK" }
+  ],
+  "DESPESA": [
+    { value: "IMPORTACAO_LOTE_CSV", label: "IMPORTAÇÃO (CSV)" },
+    { value: "EXCLUSAO_LOTE_DESPESA", label: "EXCLUSÃO / ROLLBACK" }
+  ]
+};
+
+// Gera a lista de todas as ações únicas para quando "TODAS AS ENTIDADES" estiver selecionada
+const TODAS_ACOES = Array.from(
+  new Map(
+    Object.values(ACOES_POR_ENTIDADE)
+      .flat()
+      .map(item => [item.value, item])
+  ).values()
+);
+
 export default function AuditoriaPage() {
   const [data, setData] = useState<PageResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   
+  // Filtros
+  const [filtroAcao, setFiltroAcao] = useState('');
+  const [filtroEntidade, setFiltroEntidade] = useState('');
+  const [filtroUsuario, setFiltroUsuario] = useState('');
+
   const [selectedLog, setSelectedLog] = useState<LogAuditoria | null>(null);
   const [loteParaExcluir, setLoteParaExcluir] = useState<string | null>(null);
 
-  const fetchLogs = useCallback(async (pageNumber: number) => {
+  // Limpa o filtro de ação se a entidade mudar e a ação selecionada não for compatível
+  useEffect(() => {
+    if (filtroEntidade) {
+      const acoesValidas = ACOES_POR_ENTIDADE[filtroEntidade]?.map(a => a.value) || [];
+      if (filtroAcao && !acoesValidas.includes(filtroAcao)) {
+        setFiltroAcao('');
+      }
+    }
+  }, [filtroEntidade, filtroAcao]);
+
+  const fetchLogs = useCallback(async (pageNumber: number, acao = filtroAcao, entidade = filtroEntidade, usuario = filtroUsuario) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(`/auditoria?page=${pageNumber}&size=20&sort=dataHora,desc`);
+      let url = `/auditoria?page=${pageNumber}&size=20&sort=dataHora,desc`;
+      if (acao) url += `&acao=${acao}`;
+      if (entidade) url += `&entidade=${entidade}`;
+      if (usuario) url += `&usuarioNome=${usuario}`;
+
+      const response = await api.get(url);
       setData(response.data);
       setPage(pageNumber);
     } catch (err) {
@@ -69,9 +160,21 @@ export default function AuditoriaPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filtroAcao, filtroEntidade, filtroUsuario]);
 
   useEffect(() => { fetchLogs(page); }, [page, fetchLogs]);
+
+  const handleFilter = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchLogs(0); // Volta pra primeira página ao filtrar
+  };
+
+  const limparFiltros = () => {
+    setFiltroAcao('');
+    setFiltroEntidade('');
+    setFiltroUsuario('');
+    fetchLogs(0, '', '', '');
+  };
 
   const formatDate = (val: any) => {
     if (!val) return "---";
@@ -79,23 +182,17 @@ export default function AuditoriaPage() {
     return new Date(val).toLocaleString('pt-BR');
   };
 
-  // Função Blindada para parse de JSON (Evita erro "map is not a function")
   const parseDadosExcluidos = (jsonString?: string) => {
     if (!jsonString) return [];
     try {
       let parsed = JSON.parse(jsonString);
-      // Desfaz dupla serialização se houver
-      if (typeof parsed === 'string') {
-        parsed = JSON.parse(parsed);
-      }
+      if (typeof parsed === 'string') parsed = JSON.parse(parsed);
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
-      console.error("Erro ao ler JSON da auditoria:", e);
       return [];
     }
   };
 
-  // Identifica lotes desfeitos para esconder o botão na interface
   const lotesJaExcluidos = new Set(
     data?.content.filter(l => l.acao === 'EXCLUSAO_LOTE_RECEITA').map(l => l.entidadeId)
   );
@@ -111,6 +208,8 @@ export default function AuditoriaPage() {
       alert("Erro ao processar reversão: Lote não encontrado ou já excluído.");
     }
   };
+
+  const acoesDisponiveis = filtroEntidade ? ACOES_POR_ENTIDADE[filtroEntidade] || [] : TODAS_ACOES;
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] text-slate-900 font-sans text-sm">
@@ -134,6 +233,45 @@ export default function AuditoriaPage() {
           </div>
         )}
 
+        {/* --- BARRA DE FILTROS --- */}
+        <form onSubmit={handleFilter} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-wrap items-end gap-4">
+          <div className="flex-1 min-w-[180px]">
+            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Filtrar por Entidade</label>
+            <select value={filtroEntidade} onChange={(e) => setFiltroEntidade(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:border-black">
+              <option value="">TODAS AS ENTIDADES</option>
+              <option value="CONFIGURACAO">CONFIGURAÇÕES</option>
+              <option value="USUARIO">USUÁRIOS</option>
+              <option value="RECEITA">RECEITAS</option>
+              <option value="DESPESA">DESPESAS</option>
+            </select>
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Filtrar por Ação</label>
+            <select value={filtroAcao} onChange={(e) => setFiltroAcao(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:border-black disabled:opacity-50">
+              <option value="">TODAS AS AÇÕES</option>
+              {acoesDisponiveis.map(acao => (
+                <option key={acao.value} value={acao.value}>{acao.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Filtrar por Operador</label>
+            <input 
+              type="text" 
+              placeholder="Nome do usuário..." 
+              value={filtroUsuario} 
+              onChange={(e) => setFiltroUsuario(e.target.value)} 
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:border-black placeholder:text-slate-400 font-medium"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={limparFiltros} className="px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs uppercase hover:bg-slate-200 transition-colors">Limpar</button>
+            <button type="submit" className="px-6 py-2 bg-black text-white font-bold rounded-lg text-xs uppercase hover:bg-slate-800 transition-colors shadow-md flex items-center gap-2">
+              <Search size={14} /> Aplicar Filtros
+            </button>
+          </div>
+        </form>
+
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
           <div className="flex-1 overflow-x-auto">
             <table className="w-full text-left">
@@ -141,45 +279,46 @@ export default function AuditoriaPage() {
                 <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/50">
                   <th className="px-6 py-4">Data/Hora</th>
                   <th className="px-6 py-4">Operador</th>
-                  <th className="px-6 py-4">Ação</th>
-                  <th className="px-6 py-4">Identificador de Lote</th>
+                  <th className="px-6 py-4">Ação / Entidade</th>
+                  <th className="px-6 py-4">Identificador</th>
                   <th className="px-6 py-4 text-center">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {loading ? (
                   [...Array(5)].map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={5} className="px-6 py-6 bg-slate-50/20"></td></tr>)
+                ) : data?.content.length === 0 ? (
+                  <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhum registro encontrado</td></tr>
                 ) : (
                   data?.content.map((log) => (
-                    <tr 
-                      key={log.id} 
-                      onClick={() => setSelectedLog(log)}
-                      className="hover:bg-slate-50 transition-colors text-xs group cursor-pointer"
-                    >
+                    <tr key={log.id} onClick={() => setSelectedLog(log)} className="hover:bg-slate-50 transition-colors text-xs group cursor-pointer">
                       <td className="px-6 py-4 text-slate-500 font-mono font-semibold">{formatDate(log.dataHora)}</td>
                       <td className="px-6 py-4 font-bold text-slate-700">{log.usuarioNome}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${
+                      <td className="px-6 py-4 flex flex-col items-start gap-1">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border w-max ${
                           log.acao.includes("IMPORTACAO") ? "bg-blue-100 text-blue-700 border-blue-200" : 
                           log.acao.includes("EXCLUSAO") ? "bg-red-100 text-red-700 border-red-200" : "bg-slate-100 text-slate-700 border-slate-200"
                         }`}>
                           {log.acao}
                         </span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{log.entidade}</span>
                       </td>
-                      <td className="px-6 py-4 font-bold text-slate-500 italic">{log.entidadeId}</td>
-                      <td className="px-6 py-4 text-center flex justify-center gap-2">
-                        <button className="p-1.5 text-slate-300 hover:text-black rounded transition-all" title="Ver Detalhes">
-                          <Eye size={18} />
-                        </button>
-                        {log.acao === "IMPORTACAO_LOTE_CSV" && !lotesJaExcluidos.has(log.entidadeId) && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setLoteParaExcluir(log.entidadeId); }}
-                            className="p-1.5 text-red-300 hover:text-red-600 rounded transition-all"
-                            title="Desfazer Importação"
-                          >
-                            <Trash2 size={18} />
+                      <td className="px-6 py-4 font-bold text-slate-500 font-mono text-[11px]">{log.entidadeId}</td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex justify-center gap-2">
+                          <button className="p-1.5 text-slate-300 hover:text-black rounded transition-all" title="Ver Detalhes">
+                            <Eye size={18} />
                           </button>
-                        )}
+                          {log.acao === "IMPORTACAO_LOTE_CSV" && !lotesJaExcluidos.has(log.entidadeId) && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setLoteParaExcluir(log.entidadeId); }}
+                              className="p-1.5 text-red-300 hover:text-red-600 rounded transition-all"
+                              title="Desfazer Importação"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -188,14 +327,25 @@ export default function AuditoriaPage() {
             </table>
           </div>
           
-          {!loading && data && (
+          {/* --- NOVA PAGINAÇÃO (PRIMEIRA E ÚLTIMA PÁGINA) --- */}
+          {!loading && data && data.content.length > 0 && (
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                 Página {data.number + 1} de {data.totalPages} • Total: {data.totalElements} logs
               </span>
               <div className="flex gap-2">
-                <button onClick={(e) => { e.stopPropagation(); setPage(p => Math.max(0, p - 1)); }} disabled={data.first} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50"><ChevronLeft size={16} /></button>
-                <button onClick={(e) => { e.stopPropagation(); setPage(p => Math.min(data.totalPages - 1, p + 1)); }} disabled={data.last} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50"><ChevronRight size={16} /></button>
+                <button onClick={(e) => { e.stopPropagation(); setPage(0); }} disabled={data.first} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50" title="Primeira Página">
+                  <ChevronsLeft size={16} />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setPage(p => Math.max(0, p - 1)); }} disabled={data.first} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50" title="Página Anterior">
+                  <ChevronLeft size={16} />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setPage(p => Math.min(data.totalPages - 1, p + 1)); }} disabled={data.last} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50" title="Próxima Página">
+                  <ChevronRight size={16} />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setPage(data.totalPages - 1); }} disabled={data.last} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50" title="Última Página">
+                  <ChevronsRight size={16} />
+                </button>
               </div>
             </div>
           )}
@@ -213,8 +363,9 @@ export default function AuditoriaPage() {
                     <History size={20} className="text-blue-600" /> Detalhamento da Auditoria
                   </h3>
                   <div className="flex items-center gap-2 mt-2 font-bold uppercase text-[10px]">
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded border border-blue-200">Ação: {selectedLog.acao}</span>
-                    <span className="text-slate-500">Lote: {selectedLog.entidadeId}</span>
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded border border-blue-200">{selectedLog.acao}</span>
+                    <span className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded border border-slate-300">{selectedLog.entidade}</span>
+                    <span className="text-slate-500 ml-2">ID / Registro: {selectedLog.entidadeId}</span>
                   </div>
                 </div>
                 <button onClick={() => setSelectedLog(null)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
@@ -222,7 +373,7 @@ export default function AuditoriaPage() {
                 </button>
               </div>
               
-              <div className="p-8 overflow-y-auto bg-white">
+              <div className="p-8 overflow-y-auto bg-white flex-1">
                 {selectedLog.acao === "EXCLUSAO_LOTE_RECEITA" && selectedLog.dadosAnteriores ? (
                   <div className="space-y-4">
                     <h4 className="text-xs font-bold text-red-700 uppercase tracking-widest border-l-4 border-red-600 pl-3">Itens Revogados do Sistema</h4>
@@ -253,15 +404,25 @@ export default function AuditoriaPage() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 border-dashed">
-                      <h4 className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <CheckCircle size={14}/> Resumo do Log
+                    {/* Renderização do JSON Novo/Atualizado */}
+                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                      <h4 className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
+                        <CheckCircle size={14}/> Dados Registrados
                       </h4>
-                      <p className="text-sm font-medium text-slate-600 leading-relaxed italic">
-                        "{selectedLog.dadosNovos || "Ação de sistema registrada sem detalhes adicionais."}"
-                      </p>
+                      <RenderizadorJSON data={selectedLog.dadosNovos} />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+
+                    {/* Mostrar Dados Anteriores se for uma Atualização */}
+                    {selectedLog.acao.includes("ATUALIZACAO") && selectedLog.dadosAnteriores && (
+                      <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mt-6">
+                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
+                          <History size={14}/> Estado Anterior
+                        </h4>
+                        <RenderizadorJSON data={selectedLog.dadosAnteriores} />
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4 mt-6">
                        <div className="p-4 bg-white border border-slate-100 rounded-lg shadow-sm">
                           <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">IP de Origem</span>
                           <span className="font-mono text-xs font-bold">{selectedLog.ipOrigem}</span>
