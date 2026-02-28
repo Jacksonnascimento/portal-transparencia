@@ -12,7 +12,8 @@ import {
   LogOut,
   Users,
   Settings,
-  Building2
+  Building2,
+  HelpCircle // Novo Ícone Adicionado
 } from "lucide-react";
 import api from "@/services/api";
 
@@ -30,7 +31,6 @@ export function Sidebar() {
         if (response.data) {
           setConfig({
             nome: response.data.nomeEntidade || 'Horizon AJ',
-            // Adicionamos um timestamp (Date.now()) para forçar o browser a não usar o cache da imagem
             brasao: response.data.urlBrasao ? `http://localhost:8080${response.data.urlBrasao}?t=${Date.now()}` : ''
           });
         }
@@ -39,13 +39,8 @@ export function Sidebar() {
       }
     }
 
-    // Carrega a identidade inicial
     loadIdentity();
-
-    // Cria um ouvinte para recarregar a identidade sempre que as configurações forem salvas
     window.addEventListener('horizon:configUpdated', loadIdentity);
-
-    // Limpa o ouvinte quando o componente for desmontado
     return () => {
       window.removeEventListener('horizon:configUpdated', loadIdentity);
     };
@@ -63,6 +58,7 @@ export function Sidebar() {
     { label: "Receitas", href: "/receitas", icon: TrendingUp },
     { label: "Despesas", href: "/despesas", icon: TrendingDown },
     { label: "Auditoria", href: "/auditoria", icon: History },
+    { label: "Gestão de FAQ", href: "/faq", icon: HelpCircle }, // Nova Rota Adicionada
     { label: "Usuários", href: "/usuarios", icon: Users },
     { label: "Configurações", href: "/configuracoes", icon: Settings } 
   ];

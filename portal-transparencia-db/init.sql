@@ -124,3 +124,15 @@ CREATE TABLE IF NOT EXISTS tb_configuracao_portal (
 INSERT INTO tb_configuracao_portal (id, nome_entidade, cnpj, cor_principal, endereco, telefone, horario_atendimento)
 SELECT 1, 'Horizon Transparência', '00.000.000/0001-00', '#0F172A', 'Rua Exemplo, 123', '(00) 0000-0000', '08h às 14h'
 WHERE NOT EXISTS (SELECT 1 FROM tb_configuracao_portal WHERE id = 1);
+
+
+CREATE TABLE IF NOT EXISTS tb_faq (
+    id BIGSERIAL PRIMARY KEY,
+    pergunta VARCHAR(255) NOT NULL,
+    resposta TEXT NOT NULL,
+    ativo BOOLEAN DEFAULT true,
+    ordem INTEGER DEFAULT 0
+);
+
+
+CREATE EXTENSION IF NOT EXISTS unaccent;
