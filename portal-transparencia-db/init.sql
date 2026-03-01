@@ -62,7 +62,8 @@ CREATE INDEX idx_despesa_credor ON tb_despesa(credor_id);
 CREATE TABLE IF NOT EXISTS tb_usuario (
     id BIGSERIAL PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
-    email VARCHAR(150) UNIQUE NOT NULL,
+    cpf VARCHAR(11) UNIQUE NOT NULL,
+    email VARCHAR(150) UNIQUE,
     senha VARCHAR(255) NOT NULL,
     role VARCHAR(50) DEFAULT 'ADMIN',
     ativo BOOLEAN DEFAULT TRUE,
@@ -70,17 +71,17 @@ CREATE TABLE IF NOT EXISTS tb_usuario (
 );
 
 -- Inserção do Administrador Padrão
--- A senha abaixo é o hash BCrypt válido para "admin123"
-INSERT INTO tb_usuario (nome, email, senha, role, ativo) 
+
+INSERT INTO tb_usuario (nome, cpf, email, senha, role, ativo) 
 VALUES (
     'Administrador do Sistema', 
+    '01950964019', 
     'admin@horizon.com.br', 
     '$2a$10$2Y0Yx9Q42kfvxGQgeCnAzeKQvvX1M93NfwKSFfD.8OlsvCnFpZkJ.', 
     'ADMIN', 
     TRUE
 )
-ON CONFLICT (email) DO NOTHING;
-
+ON CONFLICT (cpf) DO NOTHING;
 
 -- Criação da tabela de Logs de Auditoria (A "Caixa-Preta")
 CREATE TABLE IF NOT EXISTS tb_log_auditoria (

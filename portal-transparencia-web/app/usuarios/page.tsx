@@ -9,19 +9,20 @@ import {
   X,
   UserPlus,
   Edit2,
-  Trash2,
+  Trash2, // Unused but kept for your future use
   CheckCircle,
   Shield,
   UserX,
   UserCheck,
-  Key // <-- Novo ícone para a senha
+  Key
 } from 'lucide-react';
 
 // --- INTERFACES ---
 interface Usuario {
   id: number;
   nome: string;
-  email: string;
+  cpf: string;
+  email?: string;
   role: string;
   ativo: boolean;
   dataCriacao: string;
@@ -60,6 +61,7 @@ export default function UsuariosPage() {
   // Dados do Formulário
   const [formData, setFormData] = useState({
     nome: '',
+    cpf: '',
     email: '',
     senha: '',
     role: 'USER'
@@ -87,15 +89,41 @@ export default function UsuariosPage() {
     setTimeout(() => setSuccessMsg(null), 3000);
   };
 
+  // Auxiliar para aplicar máscara de CPF
+  const applyCpfMask = (value: string) => {
+    let v = value.replace(/\D/g, '');
+    if (v.length > 11) v = v.slice(0, 11);
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    return v;
+  };
+
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, cpf: applyCpfMask(e.target.value) });
+  };
+
+  // Auxiliar para exibir CPF mascarado na Tabela
+  const formatCpf = (cpfStr: string) => {
+    if (!cpfStr) return '---';
+    return cpfStr.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  };
+
   const openCreateModal = () => {
     setEditingUser(null);
-    setFormData({ nome: '', email: '', senha: '', role: 'USER' });
+    setFormData({ nome: '', cpf: '', email: '', senha: '', role: 'USER' });
     setIsModalOpen(true);
   };
 
   const openEditModal = (user: Usuario) => {
     setEditingUser(user);
-    setFormData({ nome: user.nome, email: user.email, senha: '', role: user.role });
+    setFormData({ 
+      nome: user.nome, 
+      cpf: applyCpfMask(user.cpf), // Aplica máscara para exibição no form
+      email: user.email || '', 
+      senha: '', 
+      role: user.role 
+    });
     setIsModalOpen(true);
   };
 
@@ -107,22 +135,32 @@ export default function UsuariosPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    
+    // Limpamos o CPF antes de enviar para o Backend
+    const cpfLimpo = formData.cpf.replace(/\D/g, '');
+    if (cpfLimpo.length !== 11) {
+      setError("O CPF deve conter exatamente 11 dígitos.");
+      return;
+    }
+
+    const payload = {
+      nome: formData.nome,
+      cpf: cpfLimpo,
+      email: formData.email || null, // Envia null se vazio para respeitar o optional no DB
+      role: formData.role,
+      ...( !editingUser && { senha: formData.senha } ) // Adiciona senha apenas se for criação
+    };
+
     try {
       if (editingUser) {
-        // Atualiza Perfil (PUT)
-        await api.put(`/usuarios/${editingUser.id}`, {
-          nome: formData.nome,
-          email: formData.email,
-          role: formData.role
-        });
+        await api.put(`/usuarios/${editingUser.id}`, payload);
         showSuccess("Usuário atualizado com sucesso!");
       } else {
-        // Cria Novo (POST)
         if (!formData.senha) {
           setError("A senha é obrigatória para novos usuários.");
           return;
         }
-        await api.post('/usuarios', formData);
+        await api.post('/usuarios', payload);
         showSuccess("Usuário criado com sucesso!");
       }
       setIsModalOpen(false);
@@ -136,7 +174,6 @@ export default function UsuariosPage() {
     e.preventDefault();
     setError(null);
     try {
-      // Atualiza apenas a senha (PATCH)
       await api.patch(`/usuarios/${passwordData.id}/senha`, { 
         novaSenha: passwordData.novaSenha 
       });
@@ -202,7 +239,7 @@ export default function UsuariosPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/50">
-                  <th className="px-6 py-4">Nome & E-mail</th>
+                  <th className="px-6 py-4">Nome & Identificação</th>
                   <th className="px-6 py-4">Perfil</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Criado em</th>
@@ -221,7 +258,8 @@ export default function UsuariosPage() {
                     <tr key={user.id} className="hover:bg-slate-50 transition-colors text-xs group">
                       <td className="px-6 py-4">
                         <div className="font-bold text-slate-800">{user.nome}</div>
-                        <div className="text-[10px] text-slate-500">{user.email}</div>
+                        <div className="text-[10px] text-slate-500 font-medium">CPF: {formatCpf(user.cpf)}</div>
+                        {user.email && <div className="text-[10px] text-slate-400 mt-0.5">{user.email}</div>}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wide border flex w-fit items-center gap-1 ${user.role === 'ADMIN' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
@@ -244,7 +282,6 @@ export default function UsuariosPage() {
                             <Edit2 size={16} />
                           </button>
                           
-                          {/* BOTÃO DE ALTERAR SENHA AQUI */}
                           <button 
                             onClick={() => openPasswordModal(user)} 
                             className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-all" 
@@ -290,7 +327,7 @@ export default function UsuariosPage() {
               <form onSubmit={handleSave} className="p-6 space-y-4">
                 {error && (
                   <div className="p-3 bg-red-50 text-red-700 text-xs rounded-lg flex items-center border border-red-200">
-                    <AlertCircle className="mr-2" size={14} /> {error}
+                    <AlertCircle className="mr-2 flex-shrink-0" size={14} /> {error}
                   </div>
                 )}
 
@@ -305,15 +342,28 @@ export default function UsuariosPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">E-mail (Login)</label>
-                  <input 
-                    type="email" 
-                    required 
-                    value={formData.email} 
-                    onChange={e => setFormData({...formData, email: e.target.value})} 
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm" 
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">CPF (Login)</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={formData.cpf} 
+                      onChange={handleCpfChange} 
+                      placeholder="000.000.000-00"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm font-medium tracking-wide" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">E-mail <span className="text-slate-300 font-normal lowercase">(opcional)</span></label>
+                    <input 
+                      type="email" 
+                      value={formData.email} 
+                      onChange={e => setFormData({...formData, email: e.target.value})} 
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm" 
+                    />
+                  </div>
                 </div>
 
                 {!editingUser && (

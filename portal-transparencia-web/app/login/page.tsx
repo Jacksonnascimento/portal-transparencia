@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, AlertCircle, ArrowRight, Building2 } from 'lucide-react';
+import { Lock, User, AlertCircle, ArrowRight, Building2 } from 'lucide-react';
 import api from '@/services/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [cpf, setCpf] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   
-  // ESTADO DE CONTROLO VISUAL: Garante que a interface só é renderizada após obter a identidade do órgão
+  // ESTADO DE CONTROLE VISUAL: Garante que a interface só é renderizada após obter a identidade do órgão
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   
   const [config, setConfig] = useState({
@@ -33,20 +33,41 @@ export default function LoginPage() {
       } catch (err) {
         console.error("Não foi possível carregar a identidade visual da entidade.");
       } finally {
-        // Removemos o skeleton loader independentemente de sucesso ou erro na API
         setIsLoadingConfig(false);
       }
     }
     loadIdentity();
   }, []);
 
+  // Máscara de CPF on-the-fly
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, ''); // Remove tudo o que não for número
+    if (value.length > 11) value = value.slice(0, 11); // Limita a 11 dígitos
+
+    // Aplica a máscara 000.000.000-00
+    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+    value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+
+    setCpf(value);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErro(null);
 
+    // Limpamos o CPF para enviar apenas números para a API
+    const cpfLimpo = cpf.replace(/\D/g, '');
+
+    if (cpfLimpo.length !== 11) {
+      setErro('O CPF deve conter exatamente 11 dígitos.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await api.post('/auth/login', { email, senha });
+      const response = await api.post('/auth/login', { cpf: cpfLimpo, senha });
       const { token, nome, role } = response.data;
 
       // Armazenamento seguro de credenciais
@@ -56,8 +77,8 @@ export default function LoginPage() {
 
       router.push('/');
     } catch (err: any) {
-      if (err.response?.status === 403 || err.response?.status === 401) {
-        setErro('Credenciais inválidas. Verifique o seu e-mail e palavra-passe.');
+      if (err.response?.status === 403 || err.response?.status === 401 || err.response?.status === 400) {
+        setErro('Credenciais inválidas ou CPF incorreto. Verifique os dados informados.');
       } else {
         setErro('Erro de comunicação com o servidor. Tente novamente mais tarde.');
       }
@@ -66,20 +87,15 @@ export default function LoginPage() {
     }
   };
 
-  // TELA DE CARREGAMENTO AUSTERA (Padrão Institucional / Skeleton)
-  // Evita o "piscar" de ecrã e mantém a estabilidade do layout (Cumulative Layout Shift - CLS)
   if (isLoadingConfig) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4">
         <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm animate-pulse">
-          {/* Cabeçalho Neutro */}
           <div className="h-56 bg-slate-200/70 flex flex-col items-center justify-center p-10">
             <div className="w-24 h-24 bg-slate-300 rounded-full mb-4"></div>
             <div className="w-48 h-6 bg-slate-300 rounded"></div>
             <div className="w-32 h-3 bg-slate-300 rounded mt-4"></div>
           </div>
-          
-          {/* Corpo do Formulário Neutro */}
           <div className="p-8 space-y-6">
             <div className="space-y-4">
               <div>
@@ -101,12 +117,10 @@ export default function LoginPage() {
     );
   }
 
-  // TELA PRINCIPAL DE AUTENTICAÇÃO
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4 font-sans">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
         
-        {/* Cabeçalho do Card Dinâmico */}
         <div 
           className="p-10 text-center text-white relative overflow-hidden transition-colors duration-700"
           style={{ backgroundColor: config.cor }}
@@ -137,16 +151,16 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">E-mail</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">CPF</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                  <User className="absolute left-3 top-3.5 text-slate-400" size={18} />
                   <input
-                    type="email"
+                    type="text"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 transition-all text-slate-800"
-                    placeholder="auditor@horizon.com.br"
+                    value={cpf}
+                    onChange={handleCpfChange}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 transition-all text-slate-800 font-medium tracking-wide"
+                    placeholder="000.000.000-00"
                   />
                 </div>
               </div>

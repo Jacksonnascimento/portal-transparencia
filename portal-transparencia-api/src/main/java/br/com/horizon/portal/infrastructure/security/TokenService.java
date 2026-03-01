@@ -30,7 +30,7 @@ public class TokenService {
             Algorithm algorithm = Algorithm.HMAC256(secret);
             String token = JWT.create()
                     .withIssuer("portal-transparencia-api")
-                    .withSubject(usuario.getEmail())
+                    .withSubject(usuario.getCpf()) // CORREÇÃO CRÍTICA: AGORA É O CPF QUE VAI PRO TOKEN!
                     .withClaim("id", usuario.getId())
                     .withClaim("nome", usuario.getNome())
                     .withClaim("role", usuario.getRole())
@@ -41,7 +41,7 @@ public class TokenService {
             eventPublisher.publishEvent(new LogAuditoriaEvent(
                     "LOGIN_REALIZADO",
                     "AUTENTICACAO",
-                    usuario.getEmail(),
+                    usuario.getCpf(), // AUDITORIA AGORA GRAVA O CPF
                     null,
                     "Acesso concedido com perfil: " + usuario.getRole()
             ));

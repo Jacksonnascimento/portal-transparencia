@@ -29,8 +29,11 @@ public class UsuarioEntity implements UserDetails {
     @Column(nullable = false, length = 150)
     private String nome;
 
-    @Column(nullable = false, unique = true, length = 150)
-    private String email;
+    @Column(nullable = false, unique = true, length = 11)
+    private String cpf; // NOVO CAMPO OBRIGATÓRIO
+
+    @Column(unique = true, length = 150)
+    private String email; // AGORA OPCIONAL
 
     @Column(nullable = false)
     private String senha;
@@ -67,7 +70,7 @@ public class UsuarioEntity implements UserDetails {
 
     @Override
     public String getUsername() {
-        return this.email; // O login será feito via e-mail
+        return this.cpf; // O login será feito via CPF (Spring Security usará isso para o JWT)
     }
 
     @Override

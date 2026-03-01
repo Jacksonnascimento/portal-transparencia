@@ -26,21 +26,24 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> efetuarLogin(@RequestBody @Valid LoginRequest dados) {
-        // Cria um token temporário só com e-mail e senha para o Spring Security tentar validar
-        var authenticationToken = new UsernamePasswordAuthenticationToken(dados.email(), dados.senha());
+        // Limpa a formatação do CPF (ex: 123.456.789-00 -> 12345678900)
+        String cpfLimpo = dados.cpf().replaceAll("\\D", "");
         
-        // O "manager" vai lá no AutenticacaoService (que criamos antes) bater o e-mail e a senha com o banco
+        // Cria um token temporário com o CPF limpo e senha para o Spring Security validar
+        var authenticationToken = new UsernamePasswordAuthenticationToken(cpfLimpo, dados.senha());
+        
+        // O "manager" vai lá no AutenticacaoService bater o CPF e a senha com o banco
         var authentication = manager.authenticate(authenticationToken);
         
-        // Se a senha estiver correta, ele passa pra cá. Pegamos os dados do usuário logado:
+        // Se a senha estiver correta, pegamos os dados do usuário logado:
         var usuario = (UsuarioEntity) authentication.getPrincipal();
 
         org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(authentication);
         
-        // Geramos o Token JWT (o "crachá" oficial)
+        // Geramos o Token JWT (o "crachá" oficial). Como configuramos o UsuarioEntity, o Subject será o CPF!
         var tokenJWT = tokenService.gerarToken(usuario);
 
-        // Devolvemos o token e alguns dados úteis para o Frontend (como o nome para mostrar no cabeçalho)
+        // Devolvemos o token e dados úteis para o Frontend
         return ResponseEntity.ok(new TokenResponse(tokenJWT, "Bearer", usuario.getNome(), usuario.getRole()));
     }
 }

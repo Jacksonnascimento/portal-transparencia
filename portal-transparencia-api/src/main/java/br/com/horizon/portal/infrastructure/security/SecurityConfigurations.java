@@ -65,13 +65,8 @@ public class SecurityConfigurations {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // CUIDADO COM O CORS: Lista de endereços permitidos para conversar com a API
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000", // Retaguarda (Painel Admin)
-                "http://localhost:3001", // O Portal do seu sócio (Next.js)
-                "http://localhost:5173"  // O Portal do seu sócio (React/Vite)
-        ));
-
+        // CORREÇÃO CRÍTICA DO CORS PARA AMBIENTE DE DEV
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

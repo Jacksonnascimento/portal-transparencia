@@ -18,7 +18,7 @@ public class UsuarioService {
 
     private final UsuarioRepository repository;
     private final PasswordEncoder passwordEncoder;
-    private final ApplicationEventPublisher eventPublisher; // Injeção do publicador de eventos
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<UsuarioDTO.Response> listarTodos() {
         return repository.findAll().stream()
@@ -34,12 +34,19 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioDTO.Response criar(UsuarioDTO.Create dto) {
-        if (repository.existsByEmail(dto.email())) {
-            throw new IllegalArgumentException("E-mail já está em uso por outro usuário.");
+        String cpfLimpo = limparCpf(dto.cpf());
+
+        if (repository.existsByCpf(cpfLimpo)) {
+            throw new IllegalArgumentException("O CPF informado já está em uso por outro usuário.");
+        }
+
+        if (dto.email() != null && !dto.email().isBlank() && repository.existsByEmail(dto.email())) {
+            throw new IllegalArgumentException("O E-mail já está em uso por outro usuário.");
         }
 
         UsuarioEntity novoUsuario = UsuarioEntity.builder()
                 .nome(dto.nome())
+                .cpf(cpfLimpo) // Inserindo o CPF limpo
                 .email(dto.email())
                 .senha(passwordEncoder.encode(dto.senha()))
                 .role(dto.role() != null ? dto.role().toUpperCase() : "USER")
@@ -60,14 +67,23 @@ public class UsuarioService {
         UsuarioEntity usuario = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
 
-        if (!usuario.getEmail().equalsIgnoreCase(dto.email()) && repository.existsByEmail(dto.email())) {
-            throw new IllegalArgumentException("E-mail já está em uso por outro usuário.");
+        String cpfLimpo = limparCpf(dto.cpf());
+
+        if (!usuario.getCpf().equals(cpfLimpo) && repository.existsByCpf(cpfLimpo)) {
+            throw new IllegalArgumentException("O CPF informado já está em uso por outro usuário.");
+        }
+
+        if (dto.email() != null && !dto.email().isBlank() && 
+           (usuario.getEmail() == null || !usuario.getEmail().equalsIgnoreCase(dto.email())) && 
+           repository.existsByEmail(dto.email())) {
+            throw new IllegalArgumentException("O E-mail já está em uso por outro usuário.");
         }
 
         // Estado Anterior
         UsuarioDTO.Response estadoAnterior = UsuarioDTO.Response.fromEntity(usuario);
 
         usuario.setNome(dto.nome());
+        usuario.setCpf(cpfLimpo);
         usuario.setEmail(dto.email());
         usuario.setRole(dto.role().toUpperCase());
 
@@ -105,5 +121,11 @@ public class UsuarioService {
 
         // Dispara auditoria ocultando as senhas para proteger a base de logs
         eventPublisher.publishEvent(new LogAuditoriaEvent("ALTERACAO_SENHA", "USUARIO", usuario.getId().toString(), "[OCULTO POR SEGURANÇA]", "[OCULTO POR SEGURANÇA]"));
+    }
+
+    // Método auxiliar para limpar a máscara do CPF
+    private String limparCpf(String cpf) {
+        if (cpf == null) return null;
+        return cpf.replaceAll("\\D", "");
     }
 }

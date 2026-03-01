@@ -2,6 +2,7 @@ package br.com.horizon.portal.infrastructure.adapter.in.rest.controller;
 
 import br.com.horizon.portal.application.service.UsuarioService; 
 import br.com.horizon.portal.application.dto.usuario.UsuarioDTO;
+import jakarta.validation.Valid; // INCLUSÃO OBRIGATÓRIA
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,12 +27,12 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<UsuarioDTO.Response> criar(@RequestBody UsuarioDTO.Create dto) {
+    public ResponseEntity<UsuarioDTO.Response> criar(@RequestBody @Valid UsuarioDTO.Create dto) {
         return ResponseEntity.ok(service.criar(dto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UsuarioDTO.Response> atualizar(@PathVariable Long id, @RequestBody UsuarioDTO.Update dto) {
+    public ResponseEntity<UsuarioDTO.Response> atualizar(@PathVariable Long id, @RequestBody @Valid UsuarioDTO.Update dto) {
         return ResponseEntity.ok(service.atualizar(id, dto));
     }
 
@@ -42,7 +43,7 @@ public class UsuarioController {
     }
 
     @PatchMapping("/{id}/senha")
-    public ResponseEntity<Void> alterarSenha(@PathVariable Long id, @RequestBody UsuarioDTO.UpdateSenha dto) {
+    public ResponseEntity<Void> alterarSenha(@PathVariable Long id, @RequestBody @Valid UsuarioDTO.UpdateSenha dto) {
         service.alterarSenha(id, dto.novaSenha());
         return ResponseEntity.noContent().build();
     }

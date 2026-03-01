@@ -15,9 +15,12 @@ public class AutenticacaoService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UserDetails usuario = repository.findByEmail(username);
+        // Garantimos que a busca no banco seja feita apenas com os números do CPF
+        String cpfLimpo = username.replaceAll("\\D", "");
+        
+        UserDetails usuario = repository.findByCpf(cpfLimpo);
         if (usuario == null) {
-            throw new UsernameNotFoundException("Utilizador não encontrado!");
+            throw new UsernameNotFoundException("Utilizador não encontrado com o CPF informado!");
         }
         return usuario;
     }
