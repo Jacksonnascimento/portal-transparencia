@@ -132,6 +132,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </Link>
             <nav className="hidden md:flex items-center gap-8">
+              <Link href="/institucional" className="text-sm font-bold text-slate-600 hover:text-[var(--cor-primaria)] transition-colors uppercase tracking-widest">Institucional</Link>
               <Link href="/receitas" className="text-sm font-bold text-slate-600 hover:text-[var(--cor-primaria)] transition-colors uppercase tracking-widest">Receitas</Link>
               <Link href="/despesas" className="text-sm font-bold text-slate-600 hover:text-[var(--cor-primaria)] transition-colors uppercase tracking-widest">Despesas</Link>
               <Link href="/pessoal" className="text-sm font-bold text-slate-600 hover:text-[var(--cor-primaria)] transition-colors uppercase tracking-widest">Pessoal</Link>
@@ -149,7 +150,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="col-span-1 md:col-span-1">
                 <div className="flex items-center gap-3 mb-6">
                   <Landmark className="text-[var(--cor-primaria)]" size={24} />
-                  <span className="font-black text-slate-900 uppercase tracking-tighter italic">Horizon AJ</span>
+                  <span className="font-black text-slate-900 uppercase tracking-tighter italic">Transparência Pública</span>
                 </div>
                 <p className="text-sm text-slate-500 leading-relaxed font-medium">Este portal tem como objetivo garantir o acesso à informação e a transparência pública, conforme a Lei nº 12.527/2011.</p>
               </div>
@@ -204,7 +205,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </p>
                 <div className="flex gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-l-0 md:border-l border-slate-200 md:pl-4">
                   <Link href="/privacidade" className="hover:text-[var(--cor-primaria)] transition-colors">Política de Privacidade</Link>
-                  <Link href="/termo" className="hover:text-[var(--cor-primaria)] transition-colors">Termos de Uso</Link>
+                  <Link href="/termo" className="hover:text-[var(--cor-primaria)] transition-colors">Termo de Uso</Link>
+                  <Link href="/mapa-do-site" className="hover:text-[var(--cor-primaria)] transition-colors">Mapa do Site</Link>
                 </div>
               </div>
               
