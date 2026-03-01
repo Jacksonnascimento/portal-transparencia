@@ -151,7 +151,7 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">CPF</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Login</label>
                 <div className="relative">
                   <User className="absolute left-3 top-3.5 text-slate-400" size={18} />
                   <input
@@ -166,7 +166,7 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Palavra-passe</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Senha</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3.5 text-slate-400" size={18} />
                   <input
