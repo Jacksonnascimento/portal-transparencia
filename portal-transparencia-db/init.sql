@@ -178,3 +178,24 @@ CREATE TABLE IF NOT EXISTS tb_faq (
 
 
 CREATE EXTENSION IF NOT EXISTS unaccent;
+
+-- Criação da tabela de Serviços (Carta de Serviços ao Usuário)
+CREATE TABLE IF NOT EXISTS tb_servico (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome VARCHAR(255) NOT NULL,
+    descricao TEXT NOT NULL,
+    setor_responsavel VARCHAR(150) NOT NULL,
+    requisitos TEXT NOT NULL,
+    etapas TEXT NOT NULL,
+    prazo_maximo VARCHAR(100) NOT NULL,
+    forma_prestacao VARCHAR(50) NOT NULL,
+    detalhes_prestacao TEXT NOT NULL,
+    canais_manifestacao TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ATIVO',
+    criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índices para otimizar as buscas no portal público
+CREATE INDEX IF NOT EXISTS idx_servico_status ON tb_servico(status);
+CREATE INDEX IF NOT EXISTS idx_servico_nome ON tb_servico(nome);

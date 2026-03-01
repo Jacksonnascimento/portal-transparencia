@@ -13,7 +13,8 @@ import {
   Users,
   Settings,
   Building2,
-  HelpCircle // Novo Ícone Adicionado
+  HelpCircle,
+  BookOpen // Ícone para Serviços
 } from "lucide-react";
 import api from "@/services/api";
 
@@ -58,15 +59,14 @@ export function Sidebar() {
     { label: "Receitas", href: "/receitas", icon: TrendingUp },
     { label: "Despesas", href: "/despesas", icon: TrendingDown },
     { label: "Auditoria", href: "/auditoria", icon: History },
-    { label: "Gestão de FAQ", href: "/faq", icon: HelpCircle }, // Nova Rota Adicionada
+    { label: "Carta de Serviços", href: "/servicos", icon: BookOpen }, // Rota de Serviços
+    { label: "Gestão de FAQ", href: "/faq", icon: HelpCircle },
     { label: "Usuários", href: "/usuarios", icon: Users },
     { label: "Configurações", href: "/configuracoes", icon: Settings } 
   ];
 
   return (
     <aside className="w-64 bg-[#0F172A] text-white hidden lg:flex flex-col sticky top-0 h-screen shadow-2xl z-50 border-r border-white/5">
-      
-      {/* Branding Dinâmico */}
       <div className="p-6 border-b border-slate-800 flex items-center gap-3">
         {config.brasao ? (
           <img src={config.brasao} alt="Logo" className="w-10 h-10 object-contain" />
@@ -95,14 +95,14 @@ export function Sidebar() {
               className={`
                 flex items-center w-full px-4 py-2.5 rounded-xl transition-all group mb-1
                 ${isActive 
-                  ? 'bg-brand text-white shadow-lg' 
+                  ? 'bg-blue-600 text-white shadow-lg' 
                   : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
                 }
               `}
             >
               <Icon 
                 size={18} 
-                className={`mr-3 transition-colors ${!isActive ? 'group-hover:text-brand' : ''}`} 
+                className={`mr-3 transition-colors ${!isActive ? 'group-hover:text-blue-400' : ''}`} 
               /> 
               <span className="text-xs font-bold uppercase tracking-wide">{item.label}</span>
             </Link>
@@ -116,7 +116,7 @@ export function Sidebar() {
             ${pathname === '/importar' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}
           `}
         >
-          <FileUp size={18} className="mr-3 group-hover:text-brand transition-colors" /> 
+          <FileUp size={18} className="mr-3 group-hover:text-blue-400 transition-colors" /> 
           <span className="text-xs font-bold uppercase tracking-wide">Importar Dados</span>
         </Link>
 
@@ -129,17 +129,15 @@ export function Sidebar() {
         </button>
       </nav>
       
-      {/* Footer Horizon AJ com link para o site */}
       <div className="p-6 bg-black/20 flex justify-center">
         <a 
           href="https://horizonaj.com.br/" 
           target="_blank" 
           rel="noopener noreferrer"
           className="hover:opacity-70 transition-opacity cursor-pointer"
-          title="Acessar site da Horizon AJ"
         >
           <h2 className="text-[11px] font-black italic text-center tracking-tighter text-slate-400">
-             HORIZON <span className="text-[#4242d1]">AJ</span>
+              HORIZON <span className="text-[#4242d1]">AJ</span>
           </h2>
         </a>
       </div>
