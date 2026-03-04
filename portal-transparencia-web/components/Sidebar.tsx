@@ -14,7 +14,8 @@ import {
   Settings,
   Building2,
   HelpCircle,
-  BookOpen // Ícone para Serviços
+  BookOpen,
+  Scale 
 } from "lucide-react";
 import api from "@/services/api";
 
@@ -57,9 +58,10 @@ export function Sidebar() {
   const menuItems = [
     { label: "Dashboard", href: "/", icon: LayoutDashboard },
     { label: "Receitas", href: "/receitas", icon: TrendingUp },
+    { label: "Dívida Ativa", href: "/divida-ativa", icon: Scale }, 
     { label: "Despesas", href: "/despesas", icon: TrendingDown },
     { label: "Auditoria", href: "/auditoria", icon: History },
-    { label: "Carta de Serviços", href: "/servicos", icon: BookOpen }, // Rota de Serviços
+    { label: "Carta de Serviços", href: "/servicos", icon: BookOpen }, 
     { label: "Gestão de FAQ", href: "/faq", icon: HelpCircle },
     { label: "Usuários", href: "/usuarios", icon: Users },
     { label: "Configurações", href: "/configuracoes", icon: Settings } 

@@ -3,6 +3,7 @@ package br.com.horizon.portal.infrastructure.adapter.in.rest.controller;
 import br.com.horizon.portal.application.service.PortalDividaAtivaService;
 import br.com.horizon.portal.infrastructure.persistence.entity.DividaAtivaEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.DividaAtivaRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -51,5 +52,26 @@ public class PortalDividaAtivaController {
                 .map(DividaAtivaPublicaDTO::fromEntity);
                 
         return ResponseEntity.ok(page);
+    }
+
+    @GetMapping("/exportar")
+    public void exportarDividaAtiva(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) Integer ano,
+            @RequestParam(name = "formato", required = false, defaultValue = "csv") String formato,
+            HttpServletResponse response) throws Exception {
+
+        Specification<DividaAtivaEntity> spec = dividaAtivaService.criarSpecificationDivida(nome, ano);
+
+        if ("pdf".equalsIgnoreCase(formato)) {
+            response.setContentType("application/pdf");
+            response.setHeader("Content-Disposition", "attachment; filename=\"divida_ativa_transparencia.pdf\"");
+            dividaAtivaService.gerarPdfDivida(spec, response);
+        } else {
+            response.setContentType("text/csv");
+            response.setCharacterEncoding("UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=\"divida_ativa_transparencia.csv\"");
+            dividaAtivaService.gerarCsvDivida(spec, response.getWriter());
+        }
     }
 }

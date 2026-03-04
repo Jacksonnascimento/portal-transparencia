@@ -234,11 +234,11 @@ INSERT INTO tb_receita (exercicio, mes, data_lancamento, codigo_natureza, catego
 
 -- Injetando Histórico de Dívida Ativa (2023 a 2025)
 INSERT INTO tb_divida_ativa (nome_devedor, cpf_cnpj, valor_total_divida, ano_inscricao, tipo_divida) VALUES
-('Empresa Alfa de Tecnologia Ltda', '12.345.***/0001-**', 45000.50, 2025, 'ISSQN'),
-('Construtora Horizonte S/A', '98.765.***/0001-**', 125000.00, 2025, 'ISSQN - Construção Civil'),
-('João Carlos da Silva', '111.***.***-22', 1500.75, 2024, 'IPTU'),
-('Maria Oliveira e Souza', '222.***.***-33', 3450.00, 2024, 'IPTU'),
-('Viação Rápida Logística', '55.666.***/0002-**', 12800.00, 2023, 'Multa Administrativa'),
-('Pedro Paulo Santos', '333.***.***-44', 850.00, 2023, 'Taxa de Alvará');
+('Empresa Alfa de Tecnologia Ltda', '22.167.816/0001-47', 45000.50, 2025, 'ISSQN'),
+('Construtora Horizonte S/A', '61.682.179/0001-07', 125000.00, 2025, 'ISSQN - Construção Civil'),
+('João Carlos da Silva', '61.682.179/0001-07', 1500.75, 2024, 'IPTU'),
+('Maria Oliveira e Souza', '61.682.179/0001-07', 3450.00, 2024, 'IPTU'),
+('Viação Rápida Logística', '54.561.688/0001-08', 12800.00, 2023, 'Multa Administrativa'),
+('Pedro Paulo Santos', '16.543.203/0001-64', 850.00, 2023, 'Taxa de Alvará');
 
 /*até aqui*/
