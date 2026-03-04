@@ -17,6 +17,7 @@ public class ReceitaResponse {
     private LocalDate dataLancamento;
     
     // Classificação
+    private String codigoNatureza; // NOVO CAMPO
     private String categoriaEconomica;
     private String origem;
     private String especie;
@@ -38,6 +39,7 @@ public class ReceitaResponse {
                 .exercicio(entity.getExercicio())
                 .mes(entity.getMes())
                 .dataLancamento(entity.getDataLancamento())
+                .codigoNatureza(entity.getCodigoNatureza()) // NOVO CAMPO
                 .categoriaEconomica(entity.getCategoriaEconomica())
                 .origem(entity.getOrigem())
                 .especie(entity.getEspecie())

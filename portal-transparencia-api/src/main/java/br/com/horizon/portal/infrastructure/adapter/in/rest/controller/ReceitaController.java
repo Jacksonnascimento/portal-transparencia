@@ -33,6 +33,7 @@ public class ReceitaController {
     @GetMapping
     public ResponseEntity<Page<ReceitaResponse>> listar(
             @RequestParam(required = false) Integer exercicio,
+            @RequestParam(required = false) String codigoNatureza, // NOVO FILTRO
             @RequestParam(required = false) String origem,
             @RequestParam(required = false) String categoria,
             @RequestParam(required = false) String fonte,
@@ -47,6 +48,8 @@ public class ReceitaController {
 
             if (exercicio != null)
                 predicates.add(cb.equal(root.get("exercicio"), exercicio));
+            if (codigoNatureza != null && !codigoNatureza.isEmpty())
+                predicates.add(cb.like(cb.lower(root.get("codigoNatureza")), "%" + codigoNatureza.toLowerCase() + "%"));
             if (origem != null && !origem.isEmpty())
                 predicates.add(cb.like(cb.lower(root.get("origem")), "%" + origem.toLowerCase() + "%"));
             if (categoria != null && !categoria.isEmpty())
@@ -88,7 +91,6 @@ public class ReceitaController {
         return ResponseEntity.ok("Arquivo processado com sucesso!");
     }
 
-    // ENDPOINT PARA DESFAZER IMPORTAÇÃO
     @DeleteMapping("/lote/{loteId}")
     public ResponseEntity<String> excluirLote(@PathVariable String loteId) {
         service.excluirLote(loteId);

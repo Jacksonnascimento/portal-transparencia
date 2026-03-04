@@ -78,4 +78,8 @@ public class ReceitaEntity {
 
     @Column(name = "id_importacao")
     private String idImportacao;
+
+    // --- Classificação Orçamentária ---
+    @Column(name = "codigo_natureza", length = 50)
+    private String codigoNatureza;
 }

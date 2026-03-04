@@ -47,13 +47,14 @@ export function ImportarReceitas() {
       setFile(droppedFile);
       setStatus({ type: null, message: '' });
     } else {
-      setStatus({ type: 'error', message: 'Apenas arquivos .csv são permitidos.' });
+      setStatus({ type: 'error', message: 'Apenas ficheiros .csv são permitidos.' });
     }
   };
 
   const handleDownloadModel = () => {
-    const header = "exercicio;mes;data_lancamento;categoria_economica;origem;especie;rubrica;alinea;fonte_recursos;valor_previsto_inicial;valor_previsto_atualizado;valor_arrecadado;historico";
-    const example = "2025;1;15/01/2025;Receitas Correntes;Impostos;Impostos s/ Patrimonio;IPTU;Principal;1500 - Recursos Ordinarios;1000000,00;1000000,00;1500,50;Recebimento de IPTU lote 01";
+    // ATUALIZADO: Inclusão do codigo_natureza
+    const header = "exercicio;mes;data_lancamento;codigo_natureza;categoria_economica;origem;especie;rubrica;alinea;fonte_recursos;valor_previsto_inicial;valor_previsto_atualizado;valor_arrecadado;historico";
+    const example = "2025;1;15/01/2025;1.1.1.8.01.1.1;Receitas Correntes;Impostos;Impostos s/ Patrimonio;IPTU;Principal;1500 - Recursos Ordinarios;1000000,00;1000000,00;1500,50;Recebimento de IPTU lote 01";
     const csvContent = `${header}\n${example}`;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -80,17 +81,19 @@ export function ImportarReceitas() {
       setStatus({ type: 'success', message: 'Importação processada com sucesso! Os dados já estão disponíveis.' });
       setFile(null); 
     } catch (error: any) {
-      setStatus({ type: 'error', message: 'Falha na importação. Verifique se as colunas e o separador (;) estão corretos.' });
+      setStatus({ type: 'error', message: 'Falha na importação. Verifique se as colunas (agora são 14) e o separador (;) estão corretos.' });
     } finally {
       setLoading(false);
       setInputKey(prev => prev + 1);
     }
   };
 
+  // ATUALIZADO: Inclui codigo_natureza no dicionário
   const colunasCartilha = [
     { campo: 'exercicio', obr: 'Sim', desc: 'Ano de referência (ex: 2025)' },
     { campo: 'mes', obr: 'Sim', desc: 'Mês numérico (1 a 12)' },
     { campo: 'data_lancamento', obr: 'Sim', desc: 'DD/MM/AAAA' },
+    { campo: 'codigo_natureza', obr: 'Não', desc: 'Código Orçamental (Ex: 1.1.1...)' }, // NOVO
     { campo: 'categoria_economica', obr: 'Sim', desc: 'Ex: Receitas Correntes' },
     { campo: 'origem', obr: 'Sim', desc: 'Ex: Impostos, Taxas' },
     { campo: 'especie', obr: 'Não', desc: 'Detalhamento da Origem' },
@@ -104,7 +107,6 @@ export function ImportarReceitas() {
   ];
 
   return (
-    // ADICIONADO 'relative' PARA CONTER O DRAG OVERLAY
     <div 
       className="w-full relative"
       onDragEnter={handleDrag}
@@ -112,12 +114,11 @@ export function ImportarReceitas() {
       onDragLeave={handleDrag}
       onDrop={handleDrop}
     >
-      {/* 🟦 OVERLAY DE DRAG CORRIGIDO */}
       {isDragging && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/10 backdrop-blur-sm border-4 border-dashed border-slate-400 rounded-2xl pointer-events-none transition-all">
           <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-bounce">
             <UploadCloud size={48} className="text-slate-900" />
-            <span className="mt-4 font-black text-slate-900 uppercase text-sm tracking-widest">Solte o arquivo CSV aqui</span>
+            <span className="mt-4 font-black text-slate-900 uppercase text-sm tracking-widest">Solte o ficheiro CSV aqui</span>
           </div>
         </div>
       )}
@@ -129,15 +130,13 @@ export function ImportarReceitas() {
           </div>
           Carga de Receitas Públicas
         </h2>
-        <p className="text-slate-500 text-sm mt-1 ml-12">Importação em lote via arquivo CSV padronizado.</p>
+        <p className="text-slate-500 text-sm mt-1 ml-12">Importação em lote via ficheiro CSV padronizado.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* COLUNA DE AÇÃO */}
         <div className="lg:col-span-1 space-y-6">
           
-          {/* PASSO 1 */}
           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
             <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 text-xs uppercase tracking-widest">
               <FileSpreadsheet size={16} className="text-slate-400" /> 1. Obter Layout
@@ -150,10 +149,9 @@ export function ImportarReceitas() {
             </button>
           </div>
 
-          {/* PASSO 2 */}
           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-lg">
             <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 text-xs uppercase tracking-widest">
-              <UploadCloud size={16} className="text-slate-400" /> 2. Upload do Arquivo
+              <UploadCloud size={16} className="text-slate-400" /> 2. Upload do Ficheiro
             </h3>
             
             <div className={`border-2 border-dashed rounded-xl p-8 text-center relative transition-all group ${file ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'}`}>
@@ -173,11 +171,10 @@ export function ImportarReceitas() {
               </p>
             </div>
 
-            {/* AÇÕES DE UPLOAD */}
             {file && (
               <div className="mt-6 animate-in zoom-in-95 space-y-3">
                 <div className="p-3 bg-emerald-100/50 rounded-lg flex items-center gap-2 text-emerald-800 font-bold text-xs border border-emerald-200">
-                  <FileCheck size={16} /> Arquivo pronto para carga
+                  <FileCheck size={16} /> Ficheiro pronto para carga
                 </div>
                 
                 <button 
@@ -198,7 +195,6 @@ export function ImportarReceitas() {
               </div>
             )}
 
-            {/* MENSAGENS DE STATUS */}
             {status.message && (
               <div className={`mt-4 p-4 rounded-xl text-xs font-bold flex items-start gap-2 border animate-in slide-in-from-top-2 ${
                 status.type === 'success' 
@@ -212,7 +208,6 @@ export function ImportarReceitas() {
           </div>
         </div>
 
-        {/* DICIONÁRIO DE DADOS */}
         <div className="lg:col-span-2">
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden h-full flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">

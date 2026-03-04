@@ -24,6 +24,7 @@ interface Receita {
   exercicio: number;
   mes: number;
   dataLancamento: string | number[]; 
+  codigoNatureza?: string; // NOVO CAMPO
   categoriaEconomica: string;
   origem: string;
   especie?: string;
@@ -73,6 +74,7 @@ export default function ReceitasPage() {
   // Estados dos Filtros
   const [showFilters, setShowFilters] = useState(false);
   const [fExercicio, setFExercicio] = useState('');
+  const [fCodigoNatureza, setFCodigoNatureza] = useState(''); // NOVO FILTRO
   const [fOrigem, setFOrigem] = useState('');
   const [fCategoria, setFCategoria] = useState('');
   const [fFonte, setFFonte] = useState('');
@@ -97,6 +99,7 @@ export default function ReceitasPage() {
     try {
       let params = `page=${pageNumber}&size=20&sort=dataLancamento,desc`;
       if (fExercicio) params += `&exercicio=${fExercicio}`;
+      if (fCodigoNatureza) params += `&codigoNatureza=${encodeURIComponent(fCodigoNatureza)}`;
       if (fOrigem) params += `&origem=${encodeURIComponent(fOrigem)}`;
       if (fCategoria) params += `&categoria=${encodeURIComponent(fCategoria)}`;
       if (fFonte) params += `&fonte=${encodeURIComponent(fFonte)}`;
@@ -113,7 +116,7 @@ export default function ReceitasPage() {
     } finally {
       setLoading(false);
     }
-  }, [fExercicio, fOrigem, fCategoria, fFonte, fDataInicio, fDataFim, fDataImpInicio, fDataImpFim]);
+  }, [fExercicio, fCodigoNatureza, fOrigem, fCategoria, fFonte, fDataInicio, fDataFim, fDataImpInicio, fDataImpFim]);
 
   useEffect(() => {
     fetchReceitas(page);
@@ -141,7 +144,7 @@ export default function ReceitasPage() {
     }
 
     const headers = [
-      "ID", "Exercicio", "Mes", "Data Lancamento", "Categoria Economica", 
+      "ID", "Exercicio", "Mes", "Data Lancamento", "Codigo Natureza", "Categoria Economica", 
       "Origem", "Fonte de Recursos", "Valor Previsto Atualizado", "Valor Arrecadado", "Historico"
     ];
 
@@ -150,6 +153,7 @@ export default function ReceitasPage() {
       r.exercicio,
       r.mes,
       formatDate(r.dataLancamento),
+      r.codigoNatureza || '',
       r.categoriaEconomica,
       r.origem,
       r.fonteRecursos,
@@ -174,7 +178,7 @@ export default function ReceitasPage() {
   };
 
   const limparFiltros = () => {
-    setFExercicio(''); setFOrigem(''); setFCategoria(''); setFFonte(''); 
+    setFExercicio(''); setFCodigoNatureza(''); setFOrigem(''); setFCategoria(''); setFFonte(''); 
     setFDataInicio(''); setFDataFim(''); setFDataImpInicio(''); setFDataImpFim(''); 
     setPage(0);
   };
@@ -215,7 +219,7 @@ export default function ReceitasPage() {
           </div>
         )}
 
-        {/* --- FILTROS (Com divisões claras) --- */}
+        {/* --- FILTROS --- */}
         {showFilters && (
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6 animate-in fade-in slide-in-from-top-2 space-y-6">
             
@@ -224,7 +228,7 @@ export default function ReceitasPage() {
               <h3 className="text-xs font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2 flex items-center gap-2">
                 <Target size={14} className="text-blue-600" /> Parâmetros Contábeis
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Exercício</label>
                   <select 
@@ -236,12 +240,16 @@ export default function ReceitasPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Data Lançamento (De)</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Data (De)</label>
                   <input type="date" value={fDataInicio} onChange={(e) => { setFDataInicio(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm text-slate-600" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Data Lançamento (Até)</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Data (Até)</label>
                   <input type="date" value={fDataFim} onChange={(e) => { setFDataFim(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm text-slate-600" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Cód. Natureza</label>
+                  <input type="text" placeholder="Ex: 1.1.1..." value={fCodigoNatureza} onChange={(e) => { setFCodigoNatureza(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Origem</label>
@@ -282,13 +290,14 @@ export default function ReceitasPage() {
           </div>
         )}
 
-        {/* --- TABELA DE DADOS (READ-ONLY) --- */}
+        {/* --- TABELA DE DADOS --- */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
           <div className="flex-1 overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/50">
                   <th className="px-6 py-4">Data Lançamento</th>
+                  <th className="px-6 py-4">Cód. Natureza</th> {/* NOVA COLUNA AQUI */}
                   <th className="px-6 py-4">Origem</th>
                   <th className="px-6 py-4">Fonte de Recurso</th>
                   <th className="px-6 py-4 text-right">Valor Arrecadado</th>
@@ -297,7 +306,7 @@ export default function ReceitasPage() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {loading ? (
-                   [...Array(5)].map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={5} className="px-6 py-6 bg-slate-50/20"></td></tr>)
+                   [...Array(5)].map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={6} className="px-6 py-6 bg-slate-50/20"></td></tr>)
                 ) : (
                   data?.content.map((item) => (
                     <tr 
@@ -306,6 +315,8 @@ export default function ReceitasPage() {
                       className="hover:bg-slate-50 transition-colors text-xs group cursor-pointer"
                     >
                       <td className="px-6 py-4 text-slate-500 font-semibold">{formatDate(item.dataLancamento)}</td>
+                      {/* DADO DO CÓDIGO DE NATUREZA NA TABELA */}
+                      <td className="px-6 py-4 font-mono font-bold text-slate-800">{item.codigoNatureza || '---'}</td>
                       <td className="px-6 py-4 font-bold text-slate-700">{item.origem}</td>
                       <td className="px-6 py-4 text-slate-500 truncate max-w-[200px]">{item.fonteRecursos}</td>
                       <td className="px-6 py-4 text-right font-black text-slate-900">{formatMoney(item.valorArrecadado)}</td>
@@ -397,6 +408,7 @@ export default function ReceitasPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-100 pt-8">
                   <div className="space-y-4">
                     <h4 className="text-xs font-bold text-blue-700 uppercase tracking-widest border-l-4 border-blue-600 pl-3">Dados de Classificação</h4>
+                    {selectedReceita.codigoNatureza && <div><span className="text-[10px] font-bold text-slate-400 uppercase block">Cód. Natureza</span><p className="font-mono font-bold text-sm text-slate-800">{selectedReceita.codigoNatureza}</p></div>}
                     <div><span className="text-[10px] font-bold text-slate-400 uppercase block">Categoria Econômica</span><p className="font-semibold text-sm">{selectedReceita.categoriaEconomica}</p></div>
                     <div><span className="text-[10px] font-bold text-slate-400 uppercase block">Origem</span><p className="font-semibold text-sm">{selectedReceita.origem}</p></div>
                     {selectedReceita.especie && <div><span className="text-[10px] font-bold text-slate-400 uppercase block">Espécie</span><p className="font-semibold text-sm">{selectedReceita.especie}</p></div>}

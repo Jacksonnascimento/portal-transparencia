@@ -3,7 +3,7 @@ package br.com.horizon.portal.application.service;
 import br.com.horizon.portal.infrastructure.audit.LogAuditoriaEvent;
 import br.com.horizon.portal.infrastructure.persistence.entity.ReceitaEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.ReceitaRepository;
-import com.fasterxml.jackson.databind.ObjectMapper; // Importado para serialização
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,7 +29,7 @@ public class ReceitaService {
 
     private final ReceitaRepository repository;
     private final ApplicationEventPublisher eventPublisher;
-    private final ObjectMapper objectMapper; // Necessário para salvar o "item a item" no log
+    private final ObjectMapper objectMapper;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -54,8 +54,9 @@ public class ReceitaService {
 
                 String[] dados = linha.split(";", -1);
 
-                if (dados.length < 13) {
-                    throw new IllegalArgumentException("Erro na linha " + linhaAtual + ": Número de colunas insuficiente. Esperado 13.");
+                // ATUALIZADO: Agora exige 14 colunas devido ao codigo_natureza
+                if (dados.length < 14) {
+                    throw new IllegalArgumentException("Erro na linha " + linhaAtual + ": Número de colunas insuficiente. Esperado 14.");
                 }
 
                 try {
@@ -86,14 +87,10 @@ public class ReceitaService {
         }
     }
 
-    /**
-     * Remove todas as receitas vinculadas a um lote e registra o estado anterior no log.
-     */
     @Transactional
     public void excluirLote(String loteId) {
         log.info("Iniciando processo de revogação para o lote: {}", loteId);
 
-        // 1. Buscar os registros que serão excluídos
         List<ReceitaEntity> receitasParaExcluir = repository.findByIdImportacao(loteId);
         
         if (receitasParaExcluir.isEmpty()) {
@@ -102,20 +99,16 @@ public class ReceitaService {
         }
 
         try {
-            // 2. Serializar a lista para JSON antes de deletar
-            // Isso garante que o LogAuditoriaListener tenha os dados prontos para salvar
             String jsonDadosExcluidos = objectMapper.writeValueAsString(receitasParaExcluir);
 
-            // 3. Registrar a Auditoria passando o JSON no campo dadosAnteriores
             eventPublisher.publishEvent(new LogAuditoriaEvent(
                     "EXCLUSAO_LOTE_RECEITA",
                     "RECEITA",
                     loteId,
-                    jsonDadosExcluidos, // O JSON vai como String para o log
+                    jsonDadosExcluidos,
                     "Revogação total do lote executada. Itens removidos: " + receitasParaExcluir.size()
             ));
 
-            // 4. Excluir do banco
             repository.deleteByIdImportacao(loteId);
             log.info("Lote {} removido com sucesso. {} registros apagados.", loteId, receitasParaExcluir.size());
 
@@ -132,20 +125,25 @@ public class ReceitaService {
         entity.setExercicio(Integer.parseInt(limparTexto(dados[0])));
         entity.setMes(Integer.parseInt(limparTexto(dados[1])));
         entity.setDataLancamento(parseData(dados[2]));
-        entity.setCategoriaEconomica(validarObrigatorio(dados[3], "Categoria Econômica"));
-        entity.setOrigem(validarObrigatorio(dados[4], "Origem"));
-        entity.setEspecie(limparTexto(dados[5]));
-        entity.setRubrica(limparTexto(dados[6]));
-        entity.setAlinea(limparTexto(dados[7]));
-        entity.setFonteRecursos(validarObrigatorio(dados[8], "Fonte de Recursos"));
-        entity.setValorPrevistoInicial(parseMoeda(dados[9]));
-        entity.setValorPrevistoAtualizado(parseMoeda(dados[10]));
         
-        BigDecimal arrecadado = parseMoeda(dados[11]);
+        // NOVO CAMPO ADICIONADO AQUI NO ÍNDICE 3
+        entity.setCodigoNatureza(limparTexto(dados[3])); 
+        
+        // DEMAIS ÍNDICES DESLOCADOS EM +1
+        entity.setCategoriaEconomica(validarObrigatorio(dados[4], "Categoria Econômica"));
+        entity.setOrigem(validarObrigatorio(dados[5], "Origem"));
+        entity.setEspecie(limparTexto(dados[6]));
+        entity.setRubrica(limparTexto(dados[7]));
+        entity.setAlinea(limparTexto(dados[8]));
+        entity.setFonteRecursos(validarObrigatorio(dados[9], "Fonte de Recursos"));
+        entity.setValorPrevistoInicial(parseMoeda(dados[10]));
+        entity.setValorPrevistoAtualizado(parseMoeda(dados[11]));
+        
+        BigDecimal arrecadado = parseMoeda(dados[12]);
         if (arrecadado == null) throw new IllegalArgumentException("Valor Arrecadado não pode ser nulo");
         entity.setValorArrecadado(arrecadado);
         
-        entity.setHistorico(limparTexto(dados[12]));
+        entity.setHistorico(limparTexto(dados[13]));
 
         return entity;
     }

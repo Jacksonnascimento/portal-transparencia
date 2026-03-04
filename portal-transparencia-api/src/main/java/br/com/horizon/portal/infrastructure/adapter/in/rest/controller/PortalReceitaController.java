@@ -1,6 +1,6 @@
 package br.com.horizon.portal.infrastructure.adapter.in.rest.controller;
 
-import br.com.horizon.portal.application.service.PortalService;
+import br.com.horizon.portal.application.service.PortalReceitaService;
 import br.com.horizon.portal.infrastructure.persistence.entity.ReceitaEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.ReceitaRepository;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,15 +20,17 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/portal")
+@RequestMapping("/api/v1/portal/receitas") // ROTA CENTRALIZADA AQUI
 @RequiredArgsConstructor
-public class PortalController {
+public class PortalReceitaController {
 
     private final ReceitaRepository receitaRepository;
-    private final PortalService portalService;
+    private final PortalReceitaService portalService;
 
+    // 1. ATUALIZADO: Adicionado codigoNatureza
     public record ReceitaPublicaDTO(
             Integer exercicio, Integer mes, LocalDate dataLancamento,
+            String codigoNatureza, // NOVO
             String categoriaEconomica, String origem, String especie,
             String rubrica, String alinea, String fonteRecursos,
             BigDecimal valorPrevistoInicial, BigDecimal valorPrevistoAtualizado,
@@ -37,6 +39,7 @@ public class PortalController {
         public static ReceitaPublicaDTO fromEntity(ReceitaEntity entity) {
             return new ReceitaPublicaDTO(
                     entity.getExercicio(), entity.getMes(), entity.getDataLancamento(),
+                    entity.getCodigoNatureza(), // NOVO
                     entity.getCategoriaEconomica(), entity.getOrigem(), entity.getEspecie(),
                     entity.getRubrica(), entity.getAlinea(), entity.getFonteRecursos(),
                     entity.getValorPrevistoInicial(), entity.getValorPrevistoAtualizado(),
@@ -45,9 +48,11 @@ public class PortalController {
         }
     }
 
-    @GetMapping("/receitas")
+    @GetMapping // O mapeamento /receitas já vem da classe
     public ResponseEntity<Page<ReceitaPublicaDTO>> listarReceitasPublicas(
             @RequestParam(required = false) Integer exercicio,
+            @RequestParam(required = false) Integer mes, // EXIGÊNCIA PNTP
+            @RequestParam(required = false) String codigoNatureza, // NOVO
             @RequestParam(required = false) String origem,
             @RequestParam(required = false) String categoria,
             @RequestParam(required = false) String fonte,
@@ -55,21 +60,27 @@ public class PortalController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
             @PageableDefault(size = 20, sort = {"dataLancamento"}) Pageable pageable) {
 
-        Specification<ReceitaEntity> spec = portalService.criarSpecificationReceita(exercicio, origem, categoria, fonte, dataInicio, dataFim);
+        // 2. ATUALIZADO: Passando mes e codigoNatureza para o Service
+        Specification<ReceitaEntity> spec = portalService.criarSpecificationReceita(
+                exercicio, mes, codigoNatureza, origem, categoria, fonte, dataInicio, dataFim);
+        
         Page<ReceitaPublicaDTO> page = receitaRepository.findAll(spec, pageable).map(ReceitaPublicaDTO::fromEntity);
         return ResponseEntity.ok(page);
     }
 
-    @GetMapping("/receitas/resumo")
+    @GetMapping("/resumo") // A rota final será /api/v1/portal/receitas/resumo
     public ResponseEntity<Map<String, Object>> obterResumoPublico(
             @RequestParam(required = false) Integer exercicio,
+            @RequestParam(required = false) Integer mes, // EXIGÊNCIA PNTP
+            @RequestParam(required = false) String codigoNatureza, // NOVO
             @RequestParam(required = false) String origem,
             @RequestParam(required = false) String categoria,
             @RequestParam(required = false) String fonte,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
 
-        Specification<ReceitaEntity> spec = portalService.criarSpecificationReceita(exercicio, origem, categoria, fonte, dataInicio, dataFim);
+        Specification<ReceitaEntity> spec = portalService.criarSpecificationReceita(
+                exercicio, mes, codigoNatureza, origem, categoria, fonte, dataInicio, dataFim);
 
         long totalRegistros = receitaRepository.count(spec);
         List<ReceitaEntity> filtrados = receitaRepository.findAll(spec);
@@ -86,9 +97,11 @@ public class PortalController {
         return ResponseEntity.ok(resumo);
     }
 
-    @GetMapping("/receitas/exportar")
+    @GetMapping("/exportar") // A rota final será /api/v1/portal/receitas/exportar
     public void exportarReceitas(
             @RequestParam(name = "exercicio", required = false) Integer exercicio,
+            @RequestParam(name = "mes", required = false) Integer mes, // EXIGÊNCIA PNTP
+            @RequestParam(name = "codigoNatureza", required = false) String codigoNatureza, // NOVO
             @RequestParam(name = "origem", required = false) String origem,
             @RequestParam(name = "categoria", required = false) String categoria,
             @RequestParam(name = "fonte", required = false) String fonte,
@@ -97,7 +110,8 @@ public class PortalController {
             @RequestParam(name = "formato", required = false, defaultValue = "csv") String formato,
             HttpServletResponse response) throws Exception {
 
-        Specification<ReceitaEntity> spec = portalService.criarSpecificationReceita(exercicio, origem, categoria, fonte, dataInicio, dataFim);
+        Specification<ReceitaEntity> spec = portalService.criarSpecificationReceita(
+                exercicio, mes, codigoNatureza, origem, categoria, fonte, dataInicio, dataFim);
 
         if ("pdf".equalsIgnoreCase(formato)) {
             response.setContentType("application/pdf");
@@ -111,6 +125,3 @@ public class PortalController {
         }
     }
 }
-
-
-

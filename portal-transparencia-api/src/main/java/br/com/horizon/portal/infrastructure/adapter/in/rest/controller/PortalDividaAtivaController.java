@@ -1,0 +1,55 @@
+package br.com.horizon.portal.infrastructure.adapter.in.rest.controller;
+
+import br.com.horizon.portal.application.service.PortalDividaAtivaService;
+import br.com.horizon.portal.infrastructure.persistence.entity.DividaAtivaEntity;
+import br.com.horizon.portal.infrastructure.persistence.repository.DividaAtivaRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+
+@RestController
+@RequestMapping("/api/v1/portal/receitas/divida-ativa") // Rota exata que combinamos!
+@RequiredArgsConstructor
+public class PortalDividaAtivaController {
+
+    private final DividaAtivaRepository dividaAtivaRepository;
+    private final PortalDividaAtivaService dividaAtivaService;
+
+    public record DividaAtivaPublicaDTO(
+            String nomeDevedor, 
+            String cpfCnpj, 
+            BigDecimal valorTotalDivida, 
+            Integer anoInscricao, 
+            String tipoDivida
+    ) {
+        public static DividaAtivaPublicaDTO fromEntity(DividaAtivaEntity entity) {
+            return new DividaAtivaPublicaDTO(
+                    entity.getNomeDevedor(),
+                    entity.getCpfCnpj(),
+                    entity.getValorTotalDivida(),
+                    entity.getAnoInscricao(),
+                    entity.getTipoDivida()
+            );
+        }
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<DividaAtivaPublicaDTO>> listarDividaAtivaPublica(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) Integer ano,
+            @PageableDefault(size = 20, sort = {"anoInscricao", "nomeDevedor"}) Pageable pageable) {
+
+        Specification<DividaAtivaEntity> spec = dividaAtivaService.criarSpecificationDivida(nome, ano);
+        
+        Page<DividaAtivaPublicaDTO> page = dividaAtivaRepository.findAll(spec, pageable)
+                .map(DividaAtivaPublicaDTO::fromEntity);
+                
+        return ResponseEntity.ok(page);
+    }
+}

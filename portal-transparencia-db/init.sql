@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS tb_receita (
     exercicio INT NOT NULL,
     mes INT NOT NULL,
     data_lancamento DATE,
+    codigo_natureza VARCHAR(50), -- NOVO CAMPO: Código orçamental (Ex: 1.1.1.8.01.1.1)
     categoria_economica VARCHAR(100) NOT NULL,
     origem VARCHAR(100) NOT NULL,
     especie VARCHAR(100),
@@ -22,8 +23,8 @@ CREATE TABLE IF NOT EXISTS tb_receita (
     valor_previsto_atualizado DECIMAL(19,2),
     valor_arrecadado DECIMAL(19,2) NOT NULL,
     historico TEXT,
-	data_importacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	id_importacao VARCHAR(255)
+    data_importacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id_importacao VARCHAR(255)
 );
 
 -- 3. Tabela de Despesas
@@ -199,3 +200,45 @@ CREATE TABLE IF NOT EXISTS tb_servico (
 -- Índices para otimizar as buscas no portal público
 CREATE INDEX IF NOT EXISTS idx_servico_status ON tb_servico(status);
 CREATE INDEX IF NOT EXISTS idx_servico_nome ON tb_servico(nome);
+
+
+-- Criação da Tabela Dívida Ativa
+CREATE TABLE IF NOT EXISTS tb_divida_ativa (
+    id BIGSERIAL PRIMARY KEY,
+    nome_devedor VARCHAR(255) NOT NULL,
+    cpf_cnpj VARCHAR(20), -- Mascarado na aplicação/ingestão
+    valor_total_divida DECIMAL(19,2) NOT NULL,
+    ano_inscricao INT NOT NULL,
+    tipo_divida VARCHAR(100),
+    data_importacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id_importacao VARCHAR(255)
+);
+
+-- Índices de performance para os filtros exigidos pelo PNTP
+CREATE INDEX IF NOT EXISTS idx_divida_ano ON tb_divida_ativa(ano_inscricao);
+CREATE INDEX IF NOT EXISTS idx_divida_nome ON tb_divida_ativa(nome_devedor);
+
+-- =========================================================================
+-- INSERÇÃO DE DADOS DE TESTE (SÉRIE HISTÓRICA: 2023, 2024, 2025)
+-- =========================================================================
+
+
+/*apagar depois*/
+/*daqui*/
+-- Injetando Histórico de Receitas (2023 a 2025)
+INSERT INTO tb_receita (exercicio, mes, data_lancamento, codigo_natureza, categoria_economica, origem, especie, rubrica, alinea, fonte_recursos, valor_previsto_inicial, valor_previsto_atualizado, valor_arrecadado, historico) VALUES
+(2025, 1, '2025-01-15', '1.1.1.8.01.1.1', 'Receitas Correntes', 'Impostos, Taxas e Contribuições', 'Impostos', 'IPTU', 'Principal', '1500 - Recursos Ordinários', 1500000.00, 1500000.00, 125000.50, 'Arrecadação de IPTU - Cota Única'),
+(2025, 2, '2025-02-10', '1.1.1.8.02.3.1', 'Receitas Correntes', 'Impostos, Taxas e Contribuições', 'Impostos', 'ISSQN', 'Principal', '1500 - Recursos Ordinários', 2000000.00, 2000000.00, 180500.00, 'Arrecadação de ISSQN Retido'),
+(2024, 6, '2024-06-20', '1.7.1.8.01.2.1', 'Receitas Correntes', 'Transferências Correntes', 'Transferências da União', 'FPM', 'Principal', '1500 - Recursos Ordinários', 5000000.00, 5200000.00, 480000.00, 'Repasse do Fundo de Participação dos Municípios'),
+(2023, 11, '2023-11-05', '1.1.2.8.01.1.1', 'Receitas Correntes', 'Impostos, Taxas e Contribuições', 'Taxas', 'Taxa de Limpeza', 'Principal', '1500 - Recursos Ordinários', 300000.00, 300000.00, 25000.00, 'Arrecadação de Taxa de Coleta de Lixo');
+
+-- Injetando Histórico de Dívida Ativa (2023 a 2025)
+INSERT INTO tb_divida_ativa (nome_devedor, cpf_cnpj, valor_total_divida, ano_inscricao, tipo_divida) VALUES
+('Empresa Alfa de Tecnologia Ltda', '12.345.***/0001-**', 45000.50, 2025, 'ISSQN'),
+('Construtora Horizonte S/A', '98.765.***/0001-**', 125000.00, 2025, 'ISSQN - Construção Civil'),
+('João Carlos da Silva', '111.***.***-22', 1500.75, 2024, 'IPTU'),
+('Maria Oliveira e Souza', '222.***.***-33', 3450.00, 2024, 'IPTU'),
+('Viação Rápida Logística', '55.666.***/0002-**', 12800.00, 2023, 'Multa Administrativa'),
+('Pedro Paulo Santos', '333.***.***-44', 850.00, 2023, 'Taxa de Alvará');
+
+/*até aqui*/
