@@ -13,4 +13,9 @@ public class SicEstatisticasDTO {
     private long pedidosEmAlerta;    // Faltando 3 dias ou menos
     private long pedidosExpirados;   // Passou do prazo legal
     private double tempoMedioRespostaDias;
+
+    // NOVOS CAMPOS: Satisfação do Cidadão (Selo Ouro PNTP)
+    private double notaMedia;            // Média de 1 a 5
+    private double percentualAprovacao;  // % de notas 4 e 5
+    private long totalAvaliacoes;        // Base de cálculo
 }

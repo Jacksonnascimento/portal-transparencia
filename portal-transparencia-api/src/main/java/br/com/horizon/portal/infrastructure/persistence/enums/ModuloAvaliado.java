@@ -2,5 +2,6 @@ package br.com.horizon.portal.infrastructure.persistence.enums;
 
 public enum ModuloAvaliado {
     PORTAL, 
-    ESIC
+    ESIC,
+    SIC // Adicionado para coincidir com o Service
 }

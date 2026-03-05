@@ -5,7 +5,9 @@ import br.com.horizon.portal.application.dto.sic.SicSolicitacaoRequestDTO;
 import br.com.horizon.portal.application.dto.sic.SicSolicitacaoResponseDTO;
 import br.com.horizon.portal.infrastructure.persistence.entity.SicSolicitacaoEntity;
 import br.com.horizon.portal.infrastructure.persistence.entity.SicTramiteEntity;
+import br.com.horizon.portal.infrastructure.persistence.enums.ModuloAvaliado;
 import br.com.horizon.portal.infrastructure.persistence.enums.SicStatus;
+import br.com.horizon.portal.infrastructure.persistence.repository.PesquisaSatisfacaoRepository;
 import br.com.horizon.portal.infrastructure.persistence.repository.SicSolicitacaoRepository;
 import br.com.horizon.portal.infrastructure.audit.LogAuditoriaEvent;
 import br.com.horizon.portal.infrastructure.persistence.entity.ConfiguracaoEntity;
@@ -55,6 +57,7 @@ import com.lowagie.text.pdf.PdfWriter;
 public class SicSolicitacaoService {
 
     private final SicSolicitacaoRepository repository;
+    private final PesquisaSatisfacaoRepository pesquisaSatisfacaoRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
     private final EmailService emailService;
@@ -160,19 +163,33 @@ public class SicSolicitacaoService {
             }
         }
 
+        // CÁLCULO PNTP COM SEGURANÇA CONTRA NULL
+        Double mediaBanco = pesquisaSatisfacaoRepository.findMediaPorModulo(ModuloAvaliado.SIC);
+        Long totalAvaliacoes = pesquisaSatisfacaoRepository.countByModuloAvaliado(ModuloAvaliado.SIC);
+        Long positivas = pesquisaSatisfacaoRepository.countAvaliacoesPositivas(ModuloAvaliado.SIC);
+        
+        double notaMedia = (mediaBanco != null) ? mediaBanco : 0.0;
+        long total = (totalAvaliacoes != null) ? totalAvaliacoes : 0L;
+        long pos = (positivas != null) ? positivas : 0L;
+        
+        double percentualAprovacao = (total > 0) ? ((double) pos / total) * 100.0 : 0.0;
+
         double tempoMedio = todos.stream()
                 .filter(s -> s.getDataResposta() != null)
                 .mapToLong(s -> Duration.between(s.getDataSolicitacao(), s.getDataResposta()).toDays())
                 .average().orElse(0.0);
 
         return SicEstatisticasDTO.builder()
-                .totalPedidos(todos.size())
+                .totalPedidos((long) todos.size())
                 .pedidosRespondidos(respondidos)
                 .pedidosEmAberto(emAberto)
                 .pedidosNegados(negados)
                 .pedidosEmAlerta(alertas)
                 .pedidosExpirados(expirados)
                 .tempoMedioRespostaDias(tempoMedio)
+                .notaMedia(notaMedia)
+                .totalAvaliacoes(total)
+                .percentualAprovacao(percentualAprovacao)
                 .build();
     }
 
@@ -182,17 +199,14 @@ public class SicSolicitacaoService {
         LocalDateTime inicio = (dataInicio != null) ? dataInicio.atStartOfDay() : LocalDateTime.of(2000, 1, 1, 0, 0);
         LocalDateTime fim = (dataFim != null) ? dataFim.atTime(LocalTime.MAX) : LocalDateTime.of(2100, 12, 31, 23, 59);
 
-        // Lógica de Datas para Prazos (LAI)
         LocalDateTime agora = LocalDateTime.now();
         LocalDateTime vencido20 = agora.minusDays(20);
         LocalDateTime alerta20Inicio = agora.minusDays(17);
         LocalDateTime vencido30 = agora.minusDays(30);
         LocalDateTime alerta30Inicio = agora.minusDays(27);
 
-        // Mapeamento do Filtro Especial de Prazos
         boolean apenasAlertas = "ALERTAS".equalsIgnoreCase(statusFiltro);
         boolean apenasExpirados = "EXPIRADOS".equalsIgnoreCase(statusFiltro);
-
         boolean filtrarStatus = !("TODOS".equalsIgnoreCase(statusFiltro)) && !apenasAlertas && !apenasExpirados;
 
         List<SicStatus> statusList = "PENDENTES".equalsIgnoreCase(statusFiltro) 
