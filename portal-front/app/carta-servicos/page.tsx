@@ -4,34 +4,38 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   Home, ChevronRight, Clipboard, ChevronDown, Search, 
-  Clock, FileText, ListChecks, MapPin, AlertCircle, MessageSquare, Info
+  Clock, FileText, ListChecks, MapPin, AlertCircle, MessageSquare, Info,
+  Building
 } from 'lucide-react';
 import api from '../../services/api';
 
-// Interface baseada na exigência 14.3 do PNTP
-// Se os nomes no seu Java/DTO forem diferentes, basta ajustar aqui!
+// Interface ajustada EXATAMENTE para espelhar a ServicoEntity do Java
+// Isso garante o cumprimento integral do Art. 7º da Lei 13.460/2017 (Exigência do PNTP)
 interface Servico {
-  id: number;
+  id: string; // ✅ CORRIGIDO: O Java envia um UUID (String), não number
   nome: string;
   descricao: string;
+  setorResponsavel: string;   // ✅ NOVO: Exigência do Controle Interno
   requisitos: string;
   etapas: string;
-  prazo: string;
+  prazoMaximo: string;        // ✅ CORRIGIDO: O Java envia 'prazoMaximo', não 'prazo'
   formaPrestacao: string;
+  detalhesPrestacao: string;  // ✅ NOVO: Detalhamento da forma de prestação
+  canaisManifestacao: string; // ✅ NOVO: Exigência vital do PNTP (locais para manifestação)
 }
 
 export default function CartaServicosPage() {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
-  const [openId, setOpenId] = useState<number | null>(null);
+  
+  // O estado do Acordeão precisa aceitar string por causa do UUID
+  const [openId, setOpenId] = useState<string | null>(null);
   const [erro, setErro] = useState(false);
 
   useEffect(() => {
-    // Chamada à API real do seu backend
     api.get('/portal/servicos')
       .then(res => {
-        // Trava de segurança para garantir que lê corretamente a Lista ou a Paginação (Page) do Spring Boot
         if (Array.isArray(res.data)) {
           setServicos(res.data);
         } else if (res.data && Array.isArray(res.data.content)) {
@@ -47,7 +51,7 @@ export default function CartaServicosPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const toggleServico = (id: number) => {
+  const toggleServico = (id: string) => {
     setOpenId(openId === id ? null : id);
   };
 
@@ -55,7 +59,8 @@ export default function CartaServicosPage() {
   
   const servicosFiltrados = listaServicos.filter(servico => 
     (servico.nome || '').toLowerCase().includes(busca.toLowerCase()) || 
-    (servico.descricao || '').toLowerCase().includes(busca.toLowerCase())
+    (servico.descricao || '').toLowerCase().includes(busca.toLowerCase()) ||
+    (servico.setorResponsavel || '').toLowerCase().includes(busca.toLowerCase())
   );
 
   return (
@@ -95,7 +100,7 @@ export default function CartaServicosPage() {
             <Search className="text-slate-400 ml-4 mr-3 shrink-0" size={24} />
             <input 
               type="text" 
-              placeholder="Qual serviço procura? (Ex: Alvará, IPTU, Vacina)..."
+              placeholder="Qual serviço ou setor procura? (Ex: Alvará, Tributação)..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               className="w-full bg-transparent py-3 text-slate-900 font-bold text-base outline-none placeholder:text-slate-400"
@@ -153,7 +158,7 @@ export default function CartaServicosPage() {
                   {/* CONTEÚDO EXPANDIDO */}
                   <div 
                     className={`transition-all duration-300 ease-in-out ${
-                      isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                      isOpen ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0'
                     }`}
                   >
                     <div className="p-6 md:p-8 pt-0 border-t border-slate-100">
@@ -168,6 +173,48 @@ export default function CartaServicosPage() {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        
+                        {/* ✅ ADICIONADO: Setor Responsável */}
+                        <div>
+                          <h4 className="flex items-center gap-2 text-xs font-black text-slate-800 uppercase tracking-widest mb-3">
+                            <Building size={16} className="text-slate-400" /> Setor Responsável
+                          </h4>
+                          <div className="text-sm text-slate-600 font-medium leading-relaxed bg-white border border-slate-100 p-4 rounded-xl shadow-sm">
+                            {servico.setorResponsavel || "Setor não especificado."}
+                          </div>
+                        </div>
+
+                        {/* ✅ CORRIGIDO: Agora aponta para prazoMaximo (como vem do Backend) */}
+                        <div>
+                          <h4 className="flex items-center gap-2 text-xs font-black text-slate-800 uppercase tracking-widest mb-3">
+                            <Clock size={16} className="text-slate-400" /> Prazo Máximo
+                          </h4>
+                          <div className="text-sm text-slate-600 font-medium leading-relaxed bg-white border border-slate-100 p-4 rounded-xl shadow-sm">
+                            {servico.prazoMaximo || "Prazo não estabelecido."}
+                          </div>
+                        </div>
+
+                        {/* ✅ ADICIONADO: Forma e Detalhes da Prestação combinados */}
+                        <div>
+                          <h4 className="flex items-center gap-2 text-xs font-black text-slate-800 uppercase tracking-widest mb-3">
+                            <MapPin size={16} className="text-slate-400" /> Forma de Prestação
+                          </h4>
+                          <div className="text-sm text-slate-600 font-medium leading-relaxed bg-white border border-slate-100 p-4 rounded-xl shadow-sm">
+                            <span className="font-bold text-slate-800 block mb-1">{servico.formaPrestacao || "Presencial / Online"}</span>
+                            <span className="text-xs">{servico.detalhesPrestacao || "Não há detalhes adicionais."}</span>
+                          </div>
+                        </div>
+
+                        {/* ✅ ADICIONADO: Exigência vital do PNTP (Canais de manifestação) */}
+                        <div>
+                          <h4 className="flex items-center gap-2 text-xs font-black text-slate-800 uppercase tracking-widest mb-3">
+                            <MessageSquare size={16} className="text-slate-400" /> Canais de Dúvidas
+                          </h4>
+                          <div className="text-sm text-slate-600 font-medium leading-relaxed bg-white border border-slate-100 p-4 rounded-xl shadow-sm">
+                            {servico.canaisManifestacao || "Através da Ouvidoria Municipal."}
+                          </div>
+                        </div>
+
                         {/* Requisitos e Documentos */}
                         <div>
                           <h4 className="flex items-center gap-2 text-xs font-black text-slate-800 uppercase tracking-widest mb-3">
@@ -188,36 +235,17 @@ export default function CartaServicosPage() {
                           </div>
                         </div>
 
-                        {/* Prazos */}
-                        <div>
-                          <h4 className="flex items-center gap-2 text-xs font-black text-slate-800 uppercase tracking-widest mb-3">
-                            <Clock size={16} className="text-slate-400" /> Prazo Máximo
-                          </h4>
-                          <div className="text-sm text-slate-600 font-medium leading-relaxed bg-white border border-slate-100 p-4 rounded-xl shadow-sm">
-                            {servico.prazo || "Prazo não estabelecido."}
-                          </div>
-                        </div>
-
-                        {/* Forma de Prestação */}
-                        <div>
-                          <h4 className="flex items-center gap-2 text-xs font-black text-slate-800 uppercase tracking-widest mb-3">
-                            <MapPin size={16} className="text-slate-400" /> Forma de Prestação
-                          </h4>
-                          <div className="text-sm text-slate-600 font-medium leading-relaxed bg-white border border-slate-100 p-4 rounded-xl shadow-sm">
-                            {servico.formaPrestacao || "Presencial / Online"}
-                          </div>
-                        </div>
                       </div>
 
-                      {/* Manifestação / Ouvidoria */}
+                      {/* Manifestação / Ouvidoria - Rodapé do card */}
                       <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                           <div className="bg-rose-50 text-rose-500 p-3 rounded-full shrink-0">
-                            <MessageSquare size={18} />
+                            <AlertCircle size={18} />
                           </div>
                           <div>
                             <p className="text-xs font-black text-slate-800 uppercase tracking-widest">Avaliação e Reclamações</p>
-                            <p className="text-xs text-slate-500 font-medium">Teve problemas? Aceda à nossa Ouvidoria.</p>
+                            <p className="text-xs text-slate-500 font-medium">Teve problemas com o serviço? Aceda à Ouvidoria.</p>
                           </div>
                         </div>
                         <Link href="/sic" className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-colors w-full md:w-auto text-center">
