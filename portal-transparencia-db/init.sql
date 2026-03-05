@@ -276,7 +276,7 @@ CREATE TABLE IF NOT EXISTS tb_sic_solicitacao (
     usuario_resposta_id BIGINT -- Quem respondeu no painel (para auditoria)
 );
 
--- 1.3 Criação da Tabela de Pesquisa de Satisfação
+-- Tabela de Pesquisa de Satisfação
 CREATE TABLE IF NOT EXISTS tb_pesquisa_satisfacao (
     id BIGSERIAL PRIMARY KEY,
     nota INTEGER NOT NULL CHECK (nota >= 1 AND nota <= 5),
@@ -284,3 +284,20 @@ CREATE TABLE IF NOT EXISTS tb_pesquisa_satisfacao (
     modulo_avaliado VARCHAR(50) NOT NULL, -- 'PORTAL' ou 'ESIC'
     data_avaliacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS tb_sic_tramite (
+    id BIGSERIAL PRIMARY KEY,
+    status VARCHAR(50) NOT NULL,
+    descricao TEXT NOT NULL,
+    data_tramite TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    usuario_id BIGINT,
+    solicitacao_id BIGINT NOT NULL,
+    
+    -- Cria a relação obrigatória com a tabela principal
+    CONSTRAINT fk_tramite_solicitacao 
+        FOREIGN KEY (solicitacao_id) 
+        REFERENCES tb_sic_solicitacao(id)
+);
+
+--  Criar um índice para acelerar a busca da linha do tempo
+CREATE INDEX IF NOT EXISTS idx_tramite_solicitacao ON tb_sic_tramite(solicitacao_id);

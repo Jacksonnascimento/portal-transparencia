@@ -7,6 +7,8 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List; // O IMPORT QUE FALTAVA PARA A LISTA FUNCIONAR
 
 @Entity
 @Table(name = "tb_sic_solicitacao")
@@ -68,4 +70,9 @@ public class SicSolicitacaoEntity {
 
     @Column(name = "usuario_resposta_id")
     private Long usuarioRespostaId;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "solicitacao", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("dataTramite DESC") 
+    private List<SicTramiteEntity> tramites = new ArrayList<>();
 }
