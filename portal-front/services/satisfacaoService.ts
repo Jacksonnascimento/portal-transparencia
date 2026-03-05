@@ -1,9 +1,10 @@
 import api from './api';
 
 export interface PesquisaSatisfacaoRequestDTO {
-  nota: number; // Ex: 1 a 5 ou 1 a 3
+  nota: number; // Ex: 1 a 5
   comentario?: string;
-  urlPagina: string; // Para o backend saber qual página foi avaliada
+  // O back-end exige a chave 'moduloAvaliado' baseada no Enum ModuloAvaliado (PORTAL, ESIC)
+  moduloAvaliado: 'PORTAL' | 'ESIC'; 
 }
 
 export const satisfacaoService = {
