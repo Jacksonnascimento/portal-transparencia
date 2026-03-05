@@ -41,4 +41,28 @@ public class ConfiguracaoEntity {
 
     @Column(columnDefinition = "TEXT")
     private String termosUso;
+
+    @Column(name = "endereco_sic")
+    private String enderecoSic;
+
+    @Column(name = "horario_atendimento_sic")
+    private String horarioAtendimentoSic;
+
+    @Column(name = "telefone_sic")
+    private String telefoneSic;
+
+    @Column(name = "email_sic")
+    private String emailSic;
+
+    @Column(name = "smtp_host")
+    private String smtpHost;
+
+    @Column(name = "smtp_port")
+    private String smtpPort;
+
+    @Column(name = "smtp_username")
+    private String smtpUsername;
+
+    @Column(name = "smtp_password")
+    private String smtpPassword;
 }

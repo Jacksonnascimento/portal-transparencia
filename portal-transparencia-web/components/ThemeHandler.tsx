@@ -16,7 +16,17 @@ export function ThemeHandler() {
         console.error("Erro ao aplicar tema dinâmico");
       }
     }
+    
+    // Aplica no carregamento inicial
     applyTheme();
+
+    // Adiciona o listener para atualizar em tempo real quando mudar no painel
+    window.addEventListener('horizon:configUpdated', applyTheme);
+    
+    // Limpeza de memória
+    return () => {
+      window.removeEventListener('horizon:configUpdated', applyTheme);
+    };
   }, []);
 
   return null; 

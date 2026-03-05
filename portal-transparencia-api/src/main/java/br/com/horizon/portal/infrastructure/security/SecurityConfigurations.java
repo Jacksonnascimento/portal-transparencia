@@ -27,26 +27,19 @@ public class SecurityConfigurations {
     private SecurityFilter securityFilter;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        return httpSecurity
+                .cors(cors -> cors.configure(httpSecurity)) 
+                                                           
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(req -> {
-                    // 1. ARRANCANDO A MÁSCARA DO FALSO 403 (Permite que o Spring mostre erros 500 e 404 reais)
-                    req.dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR).permitAll();
-
-                    // 2. ROTAS PÚBLICAS (Abertas para a internet sem token)
-                    req.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll();
-
-                    // 3. PORTAL DO CIDADÃO: Libera APENAS requisições de leitura (GET)
-                    // Apenas essas rotas serão usadas pelo site público (sem login)
-                    req.requestMatchers(HttpMethod.GET, "/api/v1/portal/**").permitAll();
-
-                    // 4. ROTAS PRIVADAS E DE ADMINISTRAÇÃO (Bloqueadas por padrão)
-                    // Inclui TUDO de /api/v1/receitas, /auditoria, /usuarios, etc.
-                    // REGRAS DE OURO: O anyRequest() deve ser sempre a última linha do bloco!
-                    req.anyRequest().authenticated();
-                })
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portal/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/portal/sic/solicitacoes").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/portal/sic/solicitacoes/*/recurso").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/portal/satisfacao").permitAll()
+                        .anyRequest().authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

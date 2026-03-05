@@ -15,6 +15,7 @@ import {
   Building2,
   HelpCircle,
   BookOpen,
+  MessageSquare,
   Scale 
 } from "lucide-react";
 import api from "@/services/api";
@@ -62,6 +63,7 @@ export function Sidebar() {
     { label: "Despesas", href: "/despesas", icon: TrendingDown },
     { label: "Auditoria", href: "/auditoria", icon: History },
     { label: "Carta de Serviços", href: "/servicos", icon: BookOpen }, 
+    { label: "Gestão do e-SIC", href: "/e-sic", icon: MessageSquare },
     { label: "Gestão de FAQ", href: "/faq", icon: HelpCircle },
     { label: "Usuários", href: "/usuarios", icon: Users },
     { label: "Configurações", href: "/configuracoes", icon: Settings } 
@@ -97,14 +99,14 @@ export function Sidebar() {
               className={`
                 flex items-center w-full px-4 py-2.5 rounded-xl transition-all group mb-1
                 ${isActive 
-                  ? 'bg-blue-600 text-white shadow-lg' 
+                  ? 'bg-brand text-white shadow-lg' 
                   : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
                 }
               `}
             >
               <Icon 
                 size={18} 
-                className={`mr-3 transition-colors ${!isActive ? 'group-hover:text-blue-400' : ''}`} 
+                className={`mr-3 transition-colors ${!isActive ? 'group-hover:text-white' : ''}`} 
               /> 
               <span className="text-xs font-bold uppercase tracking-wide">{item.label}</span>
             </Link>
@@ -118,7 +120,7 @@ export function Sidebar() {
             ${pathname === '/importar' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}
           `}
         >
-          <FileUp size={18} className="mr-3 group-hover:text-blue-400 transition-colors" /> 
+          <FileUp size={18} className="mr-3 group-hover:text-white transition-colors" /> 
           <span className="text-xs font-bold uppercase tracking-wide">Importar Dados</span>
         </Link>
 

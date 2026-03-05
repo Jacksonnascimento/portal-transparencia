@@ -7,7 +7,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { 
   Save, Upload, Building2, Palette, MapPin, Phone, Clock, FileText,
   AlertCircle, CheckCircle, Loader2, Globe, ExternalLink, Facebook, Instagram, 
-  Mail, Link, ShieldCheck, Scale, Undo2, Shield
+  Mail, Link, ShieldCheck, Scale, Undo2, Shield, AtSign, Server, Key
 } from 'lucide-react';
 
 interface Configuracao {
@@ -30,6 +30,15 @@ interface Configuracao {
   emailOuvidoria: string;
   politicaPrivacidade: string;
   termosUso: string;
+  // NOVOS CAMPOS DO E-SIC E SMTP
+  enderecoSic: string;
+  horarioAtendimentoSic: string;
+  telefoneSic: string;
+  emailSic: string;
+  smtpHost: string;
+  smtpPort: string;
+  smtpUsername: string;
+  smtpPassword: string;
 }
 
 const XLogo = ({ size = 14, className = "" }) => (
@@ -53,13 +62,16 @@ const formatTelefone = (value: string) => {
 };
 
 export default function ConfiguracoesPage() {
-  const [activeTab, setActiveTab] = useState<'identidade' | 'juridico'>('identidade');
+  // Alterado para suportar a nova aba 'atendimento'
+  const [activeTab, setActiveTab] = useState<'identidade' | 'juridico' | 'atendimento'>('identidade');
   const [formData, setFormData] = useState<Configuracao>({
     nomeEntidade: '', cnpj: '', urlBrasao: '', corPrincipal: '#0F172A',
     endereco: '', telefone: '', horarioAtendimento: '', siteOficial: '',
     diarioOficial: '', portalContribuinte: '', facebook: '', instagram: '',
     twitter: '', emailEntidade: '', linkOuvidoria: '', telefoneOuvidoria: '',
-    emailOuvidoria: '', politicaPrivacidade: '', termosUso: ''
+    emailOuvidoria: '', politicaPrivacidade: '', termosUso: '',
+    enderecoSic: '', horarioAtendimentoSic: '', telefoneSic: '', emailSic: '',
+    smtpHost: '', smtpPort: '', smtpUsername: '', smtpPassword: ''
   });
 
   const [loading, setLoading] = useState(true);
@@ -87,7 +99,15 @@ export default function ConfiguracoesPage() {
         telefoneOuvidoria: data.telefoneOuvidoria || '',
         emailOuvidoria: data.emailOuvidoria || '',
         politicaPrivacidade: data.politicaPrivacidade || '',
-        termosUso: data.termosUso || ''
+        termosUso: data.termosUso || '',
+        enderecoSic: data.enderecoSic || '',
+        horarioAtendimentoSic: data.horarioAtendimentoSic || '',
+        telefoneSic: data.telefoneSic || '',
+        emailSic: data.emailSic || '',
+        smtpHost: data.smtpHost || '',
+        smtpPort: data.smtpPort || '',
+        smtpUsername: data.smtpUsername || '',
+        smtpPassword: data.smtpPassword || ''
       });
     } catch (err) {
       setError("Falha ao carregar configurações.");
@@ -167,18 +187,25 @@ export default function ConfiguracoesPage() {
         <header className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Gestão do Portal</h2>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Configurações de Identidade e Conformidade LGPD</p>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Configurações de Identidade, Atendimento e e-SIC</p>
           </div>
         </header>
 
-        {/* NAVEGAÇÃO POR ABAS */}
+        {/* NAVEGAÇÃO POR ABAS ATUALIZADA */}
         <div className="flex gap-1 mb-8 bg-slate-200/50 p-1 rounded-2xl w-fit border border-slate-200 shadow-inner">
           <button 
             type="button"
             onClick={() => setActiveTab('identidade')}
             className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'identidade' ? 'bg-white text-black shadow-md' : 'text-slate-500 hover:text-slate-800'}`}
           >
-            <Building2 size={14} /> Dados e Identidade
+            <Building2 size={14} /> Identidade
+          </button>
+          <button 
+            type="button"
+            onClick={() => setActiveTab('atendimento')}
+            className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'atendimento' ? 'bg-white text-black shadow-md' : 'text-slate-500 hover:text-slate-800'}`}
+          >
+            <MapPin size={14} /> Atendimento e-SIC
           </button>
           <button 
             type="button"
@@ -201,7 +228,7 @@ export default function ConfiguracoesPage() {
         <form onSubmit={handleSave} className="pb-32">
           
           {/* ABA 1: IDENTIDADE */}
-          {activeTab === 'identidade' ? (
+          {activeTab === 'identidade' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-left-4 duration-300">
               <div className="space-y-6">
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -255,7 +282,7 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
 
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 space-y-6">
                 <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
                   <section>
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -282,7 +309,7 @@ export default function ConfiguracoesPage() {
 
                   <section>
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                      <MapPin size={14} /> Localização e Contato
+                      <MapPin size={14} /> Localização Geral
                     </h3>
                     <div className="space-y-4">
                       <div>
@@ -308,64 +335,30 @@ export default function ConfiguracoesPage() {
                       </div>
                     </div>
                   </section>
+                </div>
 
+                <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
                   <section>
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 border-t border-slate-100 pt-8">
-                      <AlertCircle size={14} /> Ouvidoria e Acesso à Informação (e-SIC)
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <Globe size={14} /> Links Oficiais e Redes
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="relative">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Link do e-SIC / Ouvidoria</label>
-                        <Link className="absolute left-3 top-[26px] text-slate-400" size={14} />
-                        <input type="url" placeholder="https://" value={formData.linkOuvidoria} onChange={e => setFormData({...formData, linkOuvidoria: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Site Institucional</label>
+                        <Globe className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                        <input type="url" placeholder="https://" value={formData.siteOficial} onChange={e => setFormData({...formData, siteOficial: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
                       </div>
                       <div className="relative">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Telefone da Ouvidoria</label>
-                        <Phone className="absolute left-3 top-[26px] text-slate-400" size={14} />
-                        <input type="text" placeholder="(00) 0000-0000" value={formData.telefoneOuvidoria} onChange={e => setFormData({...formData, telefoneOuvidoria: formatTelefone(e.target.value)})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
-                      </div>
-                      <div className="relative">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">E-mail da Ouvidoria</label>
-                        <Mail className="absolute left-3 top-[26px] text-slate-400" size={14} />
-                        <input type="email" placeholder="ouvidoria@" value={formData.emailOuvidoria} onChange={e => setFormData({...formData, emailOuvidoria: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Diário Oficial</label>
+                        <FileText className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                        <input type="url" placeholder="https://" value={formData.diarioOficial} onChange={e => setFormData({...formData, diarioOficial: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
                       </div>
                     </div>
-                  </section>
-
-                  <section>
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 border-t border-slate-100 pt-8">
-                      <Globe size={14} /> Links Oficiais e Serviços
-                    </h3>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Site Institucional</label>
-                          <Globe className="absolute left-3 top-[26px] text-slate-400" size={14} />
-                          <input type="url" placeholder="https://" value={formData.siteOficial} onChange={e => setFormData({...formData, siteOficial: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
-                        </div>
-                        <div className="relative">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Diário Oficial</label>
-                          <FileText className="absolute left-3 top-[26px] text-slate-400" size={14} />
-                          <input type="url" placeholder="https://" value={formData.diarioOficial} onChange={e => setFormData({...formData, diarioOficial: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
-                        </div>
-                        <div className="relative md:col-span-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Portal do Contribuinte (Serviços)</label>
-                          <ExternalLink className="absolute left-3 top-[26px] text-slate-400" size={14} />
-                          <input type="url" placeholder="https://" value={formData.portalContribuinte} onChange={e => setFormData({...formData, portalContribuinte: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section>
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 border-t border-slate-100 pt-8">
-                      <Globe size={14} /> Redes Sociais
-                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="relative">
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Facebook</label>
                         <Facebook className="absolute left-3 top-[26px] text-blue-600" size={14} />
-                        <input type="url" placeholder="Link do Perfil/Página" value={formData.facebook} onChange={e => setFormData({...formData, facebook: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
+                        <input type="url" placeholder="Link da Página" value={formData.facebook} onChange={e => setFormData({...formData, facebook: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
                       </div>
                       <div className="relative">
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Instagram</label>
@@ -382,8 +375,71 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
             </div>
-          ) : (
-            /* ABA 2: JURÍDICO (COM TEXTAREA NATIVO) */
+          )}
+
+          {/* NOVA ABA 2: ATENDIMENTO e-SIC E SMTP */}
+          {activeTab === 'atendimento' && (
+            <div className="grid grid-cols-1 gap-6 animate-in slide-in-from-top-4 duration-300">
+              <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
+                <section>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+                    <MapPin size={14} className="text-brand" /> Atendimento Físico do e-SIC
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Endereço da Unidade de Atendimento</label>
+                      <input type="text" value={formData.enderecoSic} onChange={e => setFormData({...formData, enderecoSic: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" placeholder="Rua, Número, Bairro - CEP" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Horário de Atendimento Físico</label>
+                      <input type="text" value={formData.horarioAtendimentoSic} onChange={e => setFormData({...formData, horarioAtendimentoSic: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" placeholder="Segunda a Sexta, das 08h às 14h" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Telefone e-SIC</label>
+                        <input type="text" value={formData.telefoneSic} onChange={e => setFormData({...formData, telefoneSic: formatTelefone(e.target.value)})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" placeholder="(00) 0000-0000" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">E-mail e-SIC</label>
+                        <input type="email" value={formData.emailSic} onChange={e => setFormData({...formData, emailSic: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" placeholder="esic@municipio.gov.br" />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="pt-8 border-t border-slate-100">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+                    <Server size={14} className="text-brand" /> Servidor de Disparo de E-mail (SMTP)
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 leading-relaxed">
+                    Configure as credenciais do servidor de e-mail institucional da prefeitura. Estes dados são usados para enviar notificações de protocolos e respostas oficiais aos cidadãos.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="md:col-span-3">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Host do Servidor SMTP</label>
+                      <input type="text" value={formData.smtpHost} onChange={e => setFormData({...formData, smtpHost: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black font-mono text-xs" placeholder="smtp.gmail.com ou mail.municipio.gov.br" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Porta</label>
+                      <input type="text" value={formData.smtpPort} onChange={e => setFormData({...formData, smtpPort: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black font-mono text-xs" placeholder="465 ou 587" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block flex items-center gap-1"><AtSign size={10} /> Usuário (E-mail de Disparo)</label>
+                      <input type="email" value={formData.smtpUsername} onChange={e => setFormData({...formData, smtpUsername: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" placeholder="disparo-transparencia@municipio.gov.br" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block flex items-center gap-1"><Key size={10} /> Senha do E-mail</label>
+                      <input type="password" value={formData.smtpPassword} onChange={e => setFormData({...formData, smtpPassword: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" placeholder="••••••••••••" />
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          )}
+
+          {/* ABA 3: JURÍDICO */}
+          {activeTab === 'juridico' && (
             <div className="animate-in slide-in-from-right-4 duration-300">
               <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-12">
                 <section>
@@ -425,15 +481,15 @@ export default function ConfiguracoesPage() {
             </div>
           )}
 
-          {/* BARRA FIXA PARA SALVAR DE QUALQUER ABA */}
+          {/* BARRA FIXA PARA SALVAR */}
           <div className="fixed bottom-0 right-0 left-64 bg-white/90 backdrop-blur-xl p-5 border-t border-slate-200 flex justify-end gap-3 z-50">
             <button 
               type="button" 
               onClick={fetchConfig} 
               disabled={saving || loading}
-              className="px-6 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold text-xs uppercase hover:bg-slate-50 hover:text-black transition-all disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold text-xs uppercase hover:bg-slate-50 transition-all disabled:opacity-50 flex items-center gap-2"
             >
-              <Undo2 size={16} /> Cancelar Alterações
+              <Undo2 size={16} /> Cancelar
             </button>
             <button 
               type="submit" 

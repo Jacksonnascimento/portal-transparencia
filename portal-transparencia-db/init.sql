@@ -120,7 +120,19 @@ CREATE TABLE IF NOT EXISTS tb_configuracao_portal (
     telefone_ouvidoria VARCHAR(20),
     email_ouvidoria VARCHAR(255),
 	politica_privacidade TEXT,
-    termos_uso TEXT
+    termos_uso TEXT,
+	
+	--e-SIC
+	endereco_sic VARCHAR(255),
+	horario_atendimento_sic VARCHAR(255),
+	telefone_sic VARCHAR(50),
+	
+	--SMTP
+	email_sic VARCHAR(100),
+	smtp_host VARCHAR(100),
+	smtp_port VARCHAR(10),
+	smtp_username VARCHAR(100),
+	smtp_password VARCHAR(255)
 );
 
 
@@ -242,3 +254,33 @@ INSERT INTO tb_divida_ativa (nome_devedor, cpf_cnpj, valor_total_divida, ano_ins
 ('Pedro Paulo Santos', '16.543.203/0001-64', 850.00, 2023, 'Taxa de Alvará');
 
 /*até aqui*/
+
+
+
+CREATE TABLE IF NOT EXISTS tb_sic_solicitacao (
+    id BIGSERIAL PRIMARY KEY,
+    protocolo VARCHAR(30) UNIQUE NOT NULL,
+    nome VARCHAR(150) NOT NULL,
+    documento VARCHAR(18) NOT NULL, -- CPF ou CNPJ
+    email VARCHAR(150) NOT NULL,
+    tipo_solicitacao VARCHAR(50) NOT NULL,
+    mensagem TEXT NOT NULL,
+    url_anexo_solicitacao VARCHAR(255),
+    sigilo BOOLEAN DEFAULT FALSE,
+    status VARCHAR(50) NOT NULL,
+    data_solicitacao TIMESTAMP NOT NULL,
+    resposta_oficial TEXT,
+    url_anexo_resposta VARCHAR(255),
+    data_resposta TIMESTAMP,
+    justificativa_prorrogacao TEXT,
+    usuario_resposta_id BIGINT -- Quem respondeu no painel (para auditoria)
+);
+
+-- 1.3 Criação da Tabela de Pesquisa de Satisfação
+CREATE TABLE IF NOT EXISTS tb_pesquisa_satisfacao (
+    id BIGSERIAL PRIMARY KEY,
+    nota INTEGER NOT NULL CHECK (nota >= 1 AND nota <= 5),
+    comentario TEXT,
+    modulo_avaliado VARCHAR(50) NOT NULL, -- 'PORTAL' ou 'ESIC'
+    data_avaliacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

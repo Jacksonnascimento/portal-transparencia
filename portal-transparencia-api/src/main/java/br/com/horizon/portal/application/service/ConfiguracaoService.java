@@ -18,7 +18,7 @@ import java.nio.file.*;
 public class ConfiguracaoService {
 
     private final ConfiguracaoRepository repository;
-    private final ApplicationEventPublisher eventPublisher; // Injeção do publicador de eventos
+    private final ApplicationEventPublisher eventPublisher;
     private final String PASTA_IMAGENS = System.getProperty("user.dir") + File.separator + "Imagens";
 
     public ConfiguracaoDTO.Response obterConfiguracao() {
@@ -35,7 +35,7 @@ public class ConfiguracaoService {
         // Captura estado anterior para o Log de Auditoria
         ConfiguracaoDTO.Response estadoAnterior = ConfiguracaoDTO.Response.fromEntity(entity);
 
-        // Mapeamento dos campos (incluindo os novos)
+        // Mapeamento dos campos (Básicos)
         entity.setNomeEntidade(dto.nomeEntidade());
         entity.setCnpj(dto.cnpj());
         entity.setCorPrincipal(dto.corPrincipal());
@@ -52,15 +52,23 @@ public class ConfiguracaoService {
         entity.setLinkOuvidoria(dto.linkOuvidoria());
         entity.setTelefoneOuvidoria(dto.telefoneOuvidoria());
         entity.setEmailOuvidoria(dto.emailOuvidoria());
-
-        // Novos campos LGPD (Rich Text vindo do Front)
         entity.setPoliticaPrivacidade(dto.politicaPrivacidade());
         entity.setTermosUso(dto.termosUso());
+
+        // MAPEAMENTO DOS NOVOS CAMPOS DO E-SIC E SMTP
+        entity.setEnderecoSic(dto.enderecoSic());
+        entity.setHorarioAtendimentoSic(dto.horarioAtendimentoSic());
+        entity.setTelefoneSic(dto.telefoneSic());
+        entity.setEmailSic(dto.emailSic());
+        entity.setSmtpHost(dto.smtpHost());
+        entity.setSmtpPort(dto.smtpPort());
+        entity.setSmtpUsername(dto.smtpUsername());
+        entity.setSmtpPassword(dto.smtpPassword());
 
         ConfiguracaoEntity saved = repository.save(entity);
         ConfiguracaoDTO.Response estadoNovo = ConfiguracaoDTO.Response.fromEntity(saved);
 
-        // Dispara Auditoria Independente
+        // Dispara Auditoria Independente (Seguindo o construtor da sua classe LogAuditoriaEvent)
         eventPublisher.publishEvent(new LogAuditoriaEvent(
                 "ATUALIZACAO",
                 "CONFIGURACAO",
@@ -73,21 +81,18 @@ public class ConfiguracaoService {
 
     @Transactional
     public String salvarBrasao(MultipartFile file) {
-        long MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 Megabytes
+        long MAX_SIZE_BYTES = 2 * 1024 * 1024;
         if (file.getSize() > MAX_SIZE_BYTES) {
             throw new RuntimeException("Ficheiro recusado: O tamanho do brasão excede o limite máximo de 2MB.");
         }
 
         try {
             File diretorio = new File(PASTA_IMAGENS);
-            if (!diretorio.exists())
-                diretorio.mkdirs();
+            if (!diretorio.exists()) diretorio.mkdirs();
 
             File[] arquivosAntigos = diretorio.listFiles((dir, name) -> name.startsWith("brasao"));
             if (arquivosAntigos != null) {
-                for (File f : arquivosAntigos) {
-                    f.delete();
-                }
+                for (File f : arquivosAntigos) f.delete();
             }
 
             String extensao = "";
@@ -98,18 +103,14 @@ public class ConfiguracaoService {
 
             String nomeArquivo = "brasao" + extensao;
             Path caminho = Paths.get(PASTA_IMAGENS, nomeArquivo);
-
             Files.copy(file.getInputStream(), caminho, StandardCopyOption.REPLACE_EXISTING);
 
             ConfiguracaoEntity entity = repository.findById(1L).orElseThrow();
-
-            // Captura estado anterior da URL
             String urlAntiga = entity.getUrlBrasao();
 
             entity.setUrlBrasao("/api/v1/portal/configuracoes/brasao");
             repository.save(entity);
 
-            // Dispara log apenas da alteração do brasão
             eventPublisher.publishEvent(
                     new LogAuditoriaEvent("ATUALIZACAO_BRASAO", "CONFIGURACAO", "1", urlAntiga, entity.getUrlBrasao()));
 

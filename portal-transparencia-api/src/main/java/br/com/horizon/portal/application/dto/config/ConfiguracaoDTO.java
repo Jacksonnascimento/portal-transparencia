@@ -18,13 +18,21 @@ public class ConfiguracaoDTO {
             String facebook,
             String instagram,
             String twitter,
-            // Novos campos
             String emailEntidade,
             String linkOuvidoria,
             String telefoneOuvidoria,
             String emailOuvidoria,
             String politicaPrivacidade,
-            String termosUso
+            String termosUso,
+            // NOVOS CAMPOS E-SIC E SMTP
+            String enderecoSic,
+            String horarioAtendimentoSic,
+            String telefoneSic,
+            String emailSic,
+            String smtpHost,
+            String smtpPort,
+            String smtpUsername,
+            String smtpPassword
     ) {
         public static Response fromEntity(ConfiguracaoEntity e) {
             return new Response(
@@ -33,8 +41,10 @@ public class ConfiguracaoDTO {
                 e.getSiteOficial(), e.getDiarioOficial(), e.getPortalContribuinte(),
                 e.getFacebook(), e.getInstagram(), e.getTwitter(),
                 e.getEmailEntidade(), e.getLinkOuvidoria(), e.getTelefoneOuvidoria(), e.getEmailOuvidoria(),
-                e.getPoliticaPrivacidade(),
-                e.getTermosUso()
+                e.getPoliticaPrivacidade(), e.getTermosUso(),
+                // MAPEAMENTO DOS NOVOS CAMPOS
+                e.getEnderecoSic(), e.getHorarioAtendimentoSic(), e.getTelefoneSic(), e.getEmailSic(),
+                e.getSmtpHost(), e.getSmtpPort(), e.getSmtpUsername(), e.getSmtpPassword()
             );
         }
     }
@@ -52,12 +62,20 @@ public class ConfiguracaoDTO {
             String facebook,
             String instagram,
             String twitter,
-            
             String emailEntidade,
             String linkOuvidoria,
             String telefoneOuvidoria,
             String emailOuvidoria,
             String politicaPrivacidade,
-            String termosUso
+            String termosUso,
+            // NOVOS CAMPOS PARA O UPDATE
+            String enderecoSic,
+            String horarioAtendimentoSic,
+            String telefoneSic,
+            String emailSic,
+            String smtpHost,
+            String smtpPort,
+            String smtpUsername,
+            String smtpPassword
     ) {}
 }
