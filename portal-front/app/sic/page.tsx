@@ -2,55 +2,58 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import toast, { Toaster } from 'react-hot-toast';
 import { 
   Home, ChevronRight, MapPin, Clock, Phone, Mail, 
   Send, ShieldCheck, FileText, MessageSquare, Star, Search, CheckCircle, BarChart3
 } from 'lucide-react';
-import api from '../../services/api'; // Ajuste o caminho
+import { sicService, SicSolicitacaoRequestDTO, SicSolicitacaoResponseDTO } from '../../services/sicService';
+import { satisfacaoService } from '../../services/satisfacaoService';
+
+// Função auxiliar para máscara de CPF/CNPJ
+const mascaraDocumento = (valor: string) => {
+  const v = valor.replace(/\D/g, '');
+  if (v.length <= 11) {
+    return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/g, '$1.$2.$3-$4').replace(/(-\d{2})\d+?$/, '$1');
+  }
+  return v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/g, '$1.$2.$3/$4-$5').replace(/(-\d{2})\d+?$/, '$1');
+};
 
 export default function SicOuvidoriaPage() {
-  // 1. Estados do Formulário e-SIC
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SicSolicitacaoRequestDTO>({
     nome: '', documento: '', email: '', tipoSolicitacao: '', mensagem: '', sigilo: false
   });
   const [enviando, setEnviando] = useState(false);
   const [protocoloGerado, setProtocoloGerado] = useState<string | null>(null);
 
-  // 2. Estados da Consulta de Protocolo
   const [protocoloBusca, setProtocoloBusca] = useState('');
   const [documentoBusca, setDocumentoBusca] = useState('');
   const [buscandoProtocolo, setBuscandoProtocolo] = useState(false);
-  const [resultadoProtocolo, setResultadoProtocolo] = useState<any>(null);
-  const [erroProtocolo, setErroProtocolo] = useState('');
+  const [resultadoProtocolo, setResultadoProtocolo] = useState<SicSolicitacaoResponseDTO | null>(null);
 
-  // 3. Estados da Pesquisa de Satisfação
   const [satisfacao, setSatisfacao] = useState({ nota: 0, comentario: '' });
   const [enviandoSatisfacao, setEnviandoSatisfacao] = useState(false);
   const [satisfacaoEnviada, setSatisfacaoEnviada] = useState(false);
 
-  // --- FUNÇÕES DE INTEGRAÇÃO ALINHADAS AOS CONTROLLERS ---
+  const handleDocumentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, documento: mascaraDocumento(e.target.value) });
+  };
 
   const handleEnviarSolicitacao = async (e: React.FormEvent) => {
     e.preventDefault();
     setEnviando(true);
+    const toastId = toast.loading('Registrando solicitação...');
+    
     try {
-      // MAPEAMENTO: Ajustando as chaves do front para o DTO do Back-end
-      const payloadSic = {
-        nome: formData.nome,
-        email: formData.email,
-        documento: formData.documento,
-        assunto: formData.tipoSolicitacao, // Map para 'assunto'
-        descricao: formData.mensagem,      // Map para 'descricao'
-        anonimo: formData.sigilo           // Map para 'anonimo'
-      };
-
-      // POST: /api/v1/portal/sic/solicitacoes
-      const response = await api.post('/portal/sic/solicitacoes', payloadSic);
-      setProtocoloGerado(response.data?.protocolo || `REQ-${Math.floor(Math.random() * 10000)}`);
+      // Limpa pontuações do documento antes de enviar ao back
+      const payloadEnvio = { ...formData, documento: formData.documento.replace(/\D/g, '') };
+      
+      const response = await sicService.criarSolicitacao(payloadEnvio);
+      setProtocoloGerado(response.protocolo);
+      toast.success('Solicitação registrada com sucesso!', { id: toastId });
       setFormData({ nome: '', documento: '', email: '', tipoSolicitacao: '', mensagem: '', sigilo: false });
     } catch (error) {
-      console.error("Erro ao enviar e-SIC:", error);
-      alert("Erro ao enviar a solicitação. Verifique se todos os campos estão preenchidos corretamente.");
+      toast.error('Erro ao enviar solicitação. Verifique os dados.', { id: toastId });
     } finally {
       setEnviando(false);
     }
@@ -58,22 +61,19 @@ export default function SicOuvidoriaPage() {
 
   const handleConsultarProtocolo = async () => {
     if (!protocoloBusca.trim() || !documentoBusca.trim()) {
-      setErroProtocolo('Informe o protocolo e o CPF/CNPJ.');
+      toast.error('Informe o protocolo e o documento.');
       return;
     }
     
     setBuscandoProtocolo(true);
-    setErroProtocolo('');
     setResultadoProtocolo(null);
     try {
-      // GET: /api/v1/portal/sic/solicitacoes/{protocolo}?documento={documento}
-      const response = await api.get(`/portal/sic/solicitacoes/${protocoloBusca}`, {
-        params: { documento: documentoBusca }
-      });
-      setResultadoProtocolo(response.data);
+      const docLimpo = documentoBusca.replace(/\D/g, '');
+      const response = await sicService.consultarProtocolo(protocoloBusca, docLimpo);
+      setResultadoProtocolo(response);
+      toast.success('Protocolo encontrado!');
     } catch (error: any) {
-      console.error("Erro na busca:", error);
-      setErroProtocolo(error.response?.status === 404 ? 'Protocolo não encontrado.' : 'Acesso negado ou erro no servidor.');
+      toast.error(error.response?.status === 404 ? 'Protocolo não encontrado.' : 'Acesso negado ou erro no servidor.');
     } finally {
       setBuscandoProtocolo(false);
     }
@@ -83,15 +83,15 @@ export default function SicOuvidoriaPage() {
     if (satisfacao.nota === 0) return alert('Por favor, selecione uma nota de 1 a 5 estrelas.');
     setEnviandoSatisfacao(true);
     try {
-      // MAPEAMENTO: Adicionando a urlPagina exigida pelo PesquisaSatisfacaoRequestDTO
+      // MAPEAMENTO CORRIGIDO: Retirado o urlPagina e adicionado o moduloAvaliado esperado pelo Java
       const payloadSatisfacao = {
         nota: satisfacao.nota,
         comentario: satisfacao.comentario,
-        urlPagina: window.location.pathname
+        moduloAvaliado: 'ESIC' // Usando o Enum exato mapeado na API
       };
 
       // POST: /api/v1/portal/satisfacao
-      await api.post('/portal/satisfacao', payloadSatisfacao);
+      await satisfacaoService.registrarAvaliacao(payloadSatisfacao);
       setSatisfacaoEnviada(true);
     } catch (error) {
       console.error("Erro ao enviar satisfação:", error);
@@ -103,8 +103,9 @@ export default function SicOuvidoriaPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 font-sans animate-in fade-in duration-500">
+      <Toaster position="top-right" />
       
-      {/* BREADCRUMB */}
+      {/* BREADCRUMB - Mantido igual */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-8">
         <Link href="/" className="hover:text-[var(--cor-primaria)] transition-colors flex items-center gap-1">
           <Home size={12} /> Início
@@ -113,7 +114,7 @@ export default function SicOuvidoriaPage() {
         <span className="text-slate-600">SIC e Ouvidoria</span>
       </nav>
 
-      {/* HEADER */}
+      {/* HEADER - Mantido igual */}
       <div className="bg-[var(--cor-primaria)] text-white p-10 md:p-14 rounded-[3rem] shadow-lg mb-10 relative overflow-hidden">
         <MessageSquare className="absolute -right-10 -bottom-10 opacity-10" size={250} />
         <div className="relative z-10 max-w-3xl">
@@ -134,7 +135,7 @@ export default function SicOuvidoriaPage() {
         
         {/* LADO ESQUERDO: SIC Físico, Consulta e Avaliação */}
         <div className="lg:col-span-5 space-y-6">
-          
+          {/* Box de Contato (Mantido igual) */}
           <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
             <h2 className="text-xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-2">
               <MapPin className="text-[var(--cor-primaria)]" size={24} /> Atendimento Presencial
@@ -147,6 +148,7 @@ export default function SicOuvidoriaPage() {
             </div>
           </div>
 
+          {/* Box de Acompanhamento */}
           <div className="bg-slate-900 p-8 rounded-3xl text-white shadow-md">
             <h3 className="text-lg font-black tracking-tight mb-3 flex items-center gap-2">
               <FileText className="text-[var(--cor-primaria)]" size={20} /> Acompanhe seu Pedido
@@ -166,7 +168,8 @@ export default function SicOuvidoriaPage() {
               <div className="flex bg-white/10 p-2 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--cor-primaria)] transition-all">
                 <input 
                   type="text" placeholder="CPF/CNPJ do Solicitante..." 
-                  value={documentoBusca} onChange={(e) => setDocumentoBusca(e.target.value)}
+                  value={documentoBusca} onChange={(e) => setDocumentoBusca(mascaraDocumento(e.target.value))}
+                  maxLength={18}
                   className="w-full bg-transparent text-white placeholder:text-slate-500 px-3 outline-none text-sm font-bold"
                 />
                 <button 
@@ -178,8 +181,7 @@ export default function SicOuvidoriaPage() {
               </div>
             </div>
 
-            {erroProtocolo && <div className="bg-red-500/20 text-red-200 text-xs p-3 rounded-xl border border-red-500/30">{erroProtocolo}</div>}
-            
+            {/* Resultado da Busca Tipado com o Backend */}
             {resultadoProtocolo && (
               <div className="bg-white/10 p-4 rounded-xl border border-white/20 animate-in fade-in">
                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest block mb-1">Status do Pedido:</span>
@@ -187,15 +189,14 @@ export default function SicOuvidoriaPage() {
                   {resultadoProtocolo.status || 'EM ANÁLISE'}
                 </span>
                 
-                {/* Ajustado: Utilizando 'resposta' ao invés de 'respostaOuvidoria' conforme o DTO do Back-end */}
-                {resultadoProtocolo.resposta && (
+                {resultadoProtocolo.respostaOficial && (
                   <>
                     <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest block mb-1">Resposta da Ouvidoria:</span>
-                    <p className="text-xs text-slate-200 bg-black/20 p-3 rounded-lg leading-relaxed">{resultadoProtocolo.resposta}</p>
+                    <p className="text-xs text-slate-200 bg-black/20 p-3 rounded-lg leading-relaxed">{resultadoProtocolo.respostaOficial}</p>
                   </>
                 )}
-                {resultadoProtocolo.urlAnexo && (
-                   <a href={resultadoProtocolo.urlAnexo} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[10px] font-black text-blue-300 hover:text-white uppercase tracking-widest underline">
+                {resultadoProtocolo.urlAnexoResposta && (
+                   <a href={resultadoProtocolo.urlAnexoResposta} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[10px] font-black text-blue-300 hover:text-white uppercase tracking-widest underline">
                      Ver Anexo Disponibilizado
                    </a>
                 )}
@@ -203,6 +204,7 @@ export default function SicOuvidoriaPage() {
             )}
           </div>
 
+          {/* Box de Avaliação (Mantido e Integrado) */}
           <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm text-center">
             {satisfacaoEnviada ? (
               <div className="py-4 animate-in fade-in">
@@ -232,14 +234,14 @@ export default function SicOuvidoriaPage() {
                 />
                 <button 
                   type="button" onClick={handleEnviarSatisfacao} disabled={enviandoSatisfacao || satisfacao.nota === 0}
-                  className="w-full bg-slate-100 hover:bg-slate-900 hover:text-white text-slate-600 font-black text-[10px] uppercase tracking-widest py-3 rounded-xl transition-colors disabled:opacity-50 mb-4"
+                  className="w-full bg-[var(--cor-primaria)] text-white hover:opacity-90 font-black text-[10px] uppercase tracking-widest py-3 rounded-xl transition-colors disabled:opacity-50 mb-4"
                 >
                   {enviandoSatisfacao ? 'Enviando...' : 'Enviar Avaliação'}
                 </button>
 
                 <div className="border-t border-slate-100 pt-4 mt-2">
-                  <Link href="/sic/resultados" className="text-[10px] font-black text-[var(--cor-primaria)] uppercase tracking-widest hover:underline flex items-center justify-center gap-1">
-                    <BarChart3 size={12} /> Ver Resultados do SIC
+                  <Link href="/sic/resultados" className="text-[10px] font-black text-slate-600 hover:text-[var(--cor-primaria)] uppercase tracking-widest flex items-center justify-center gap-1">
+                    <BarChart3 size={12} /> Ver Relatório Estatístico do SIC
                   </Link>
                 </div>
               </>
@@ -261,8 +263,8 @@ export default function SicOuvidoriaPage() {
               </div>
               <h3 className="text-2xl font-black text-emerald-800 tracking-tight mb-2">Solicitação Registrada!</h3>
               <p className="text-emerald-600 text-sm font-medium mb-8">
-                Sua demanda foi enviada com sucesso para a nossa ouvidoria. O número do seu protocolo é: <br/>
-                <strong className="text-emerald-900 text-xl tracking-widest block mt-3">{protocoloGerado}</strong>
+                Guarde este número para consultar o andamento da sua solicitação: <br/>
+                <strong className="text-emerald-900 text-3xl tracking-widest block mt-4 bg-white p-4 rounded-xl border border-emerald-200 shadow-sm">{protocoloGerado}</strong>
               </p>
               <button 
                 type="button" onClick={() => setProtocoloGerado(null)}
@@ -298,7 +300,8 @@ export default function SicOuvidoriaPage() {
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">CPF ou CNPJ</label>
                   <input 
                     required type="text" placeholder="Apenas números..."
-                    value={formData.documento} onChange={e => setFormData({...formData, documento: e.target.value})}
+                    maxLength={18}
+                    value={formData.documento} onChange={handleDocumentoChange}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-[var(--cor-primaria)] focus:ring-1 focus:ring-[var(--cor-primaria)] transition-all"
                   />
                 </div>
@@ -309,11 +312,11 @@ export default function SicOuvidoriaPage() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-[var(--cor-primaria)] focus:ring-1 focus:ring-[var(--cor-primaria)] transition-all"
                   >
                     <option value="" disabled>Selecione uma opção...</option>
-                    <option value="Informacao">Pedido de Informação (LAI)</option>
-                    <option value="Denuncia">Denúncia</option>
-                    <option value="Reclamacao">Reclamação de Serviço</option>
-                    <option value="Sugestao">Sugestão</option>
-                    <option value="Elogio">Elogio</option>
+                    <option value="INFORMACAO">Pedido de Informação (LAI)</option>
+                    <option value="DENUNCIA">Denúncia</option>
+                    <option value="RECLAMACAO">Reclamação de Serviço</option>
+                    <option value="SUGESTAO">Sugestão</option>
+                    <option value="ELOGIO">Elogio</option>
                   </select>
                 </div>
               </div>
@@ -342,7 +345,7 @@ export default function SicOuvidoriaPage() {
                 type="submit" disabled={enviando}
                 className="w-full bg-slate-900 text-white font-black text-xs uppercase tracking-widest py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-[var(--cor-primaria)] transition-colors disabled:opacity-70"
               >
-                {enviando ? 'Enviando Protocolo...' : ( <><Send size={18} /> Enviar Solicitação Oficial</> )}
+                {enviando ? 'Processando...' : ( <><Send size={18} /> Protocolar Solicitação Oficial</> )}
               </button>
             </form>
           )}
@@ -356,7 +359,7 @@ export default function SicOuvidoriaPage() {
 function InfoRow({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
   return (
     <div className="flex items-start gap-4">
-      <div className="bg-slate-50 text-slate-400 p-3 rounded-xl shrink-0">
+      <div className="bg-slate-50 text-[var(--cor-primaria)] p-3 rounded-xl shrink-0">
         {icon}
       </div>
       <div>

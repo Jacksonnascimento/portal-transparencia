@@ -1,30 +1,30 @@
 import api from './api';
 
+// DTOs perfeitamente alinhados com o Backend Java
 export interface SicSolicitacaoRequestDTO {
   nome: string;
+  documento: string;
   email: string;
-  documento: string; // CPF ou CNPJ
-  assunto: string;
-  descricao: string;
-  anonimo: boolean;
+  tipoSolicitacao: string; // Ex: INFORMACAO, DENUNCIA, etc (Baseado no Enum SicTipo)
+  mensagem: string;
+  sigilo: boolean;
+  urlAnexoSolicitacao?: string;
 }
 
 export interface SicSolicitacaoResponseDTO {
   protocolo: string;
-  nome: string;
-  documento: string;
-  assunto: string;
-  descricao: string;
-  status: string; // Ex: 'ABERTO', 'EM_ANALISE', 'RESPONDIDO'
-  dataCriacao: string;
-  resposta?: string;
+  status: string; // Ex: ABERTO, RESPONDIDO
+  dataSolicitacao: string;
+  respostaOficial?: string;
+  urlAnexoResposta?: string;
   dataResposta?: string;
+  justificativaProrrogacao?: string;
 }
 
 export interface SicEstatisticasDTO {
   totalSolicitacoes: number;
-  atendidas: number;
-  emAndamento: number;
+  abertas: number;
+  respondidas: number;
   tempoMedioRespostaDias: number;
 }
 
@@ -35,7 +35,6 @@ export const sicService = {
   },
   
   consultarProtocolo: async (protocolo: string, documento: string): Promise<SicSolicitacaoResponseDTO> => {
-    // Passando o documento via Query Params (?documento=...) conforme o @RequestParam do backend
     const response = await api.get(`/portal/sic/solicitacoes/${protocolo}`, { 
       params: { documento } 
     });
