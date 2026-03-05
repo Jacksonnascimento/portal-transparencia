@@ -2,38 +2,37 @@ package br.com.horizon.portal.application.dto.sic;
 
 import br.com.horizon.portal.infrastructure.persistence.entity.SicSolicitacaoEntity;
 import br.com.horizon.portal.infrastructure.persistence.enums.SicStatus;
-import br.com.horizon.portal.infrastructure.persistence.enums.SicTipo;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class SicSolicitacaoResponseDTO {
-    // CAMPOS ADICIONADOS PARA O RETAGUARDA FUNCIONAR
-    private Long id; 
+
+    private Long id;
     private String protocolo;
     private String nome;
     private String documento;
     private String email;
-    private SicTipo tipoSolicitacao;
+    private String tipoSolicitacao;
     private String mensagem;
-    
-    // Status e Datas
     private SicStatus status;
     private LocalDateTime dataSolicitacao;
-    
-    // Dados da Resposta
     private String respostaOficial;
-    private String urlAnexoResposta;
     private LocalDateTime dataResposta;
-    private String justificativaProrrogacao;
+    
+    // CAMPOS DE ANEXO
+    private String urlAnexoSolicitacao; 
+    private String urlAnexoResposta;    
 
-    // Histórico
     private List<SicTramiteResponseDTO> tramites;
 
     public static SicSolicitacaoResponseDTO fromEntity(SicSolicitacaoEntity entity) {
@@ -45,19 +44,18 @@ public class SicSolicitacaoResponseDTO {
                 .nome(entity.getNome())
                 .documento(entity.getDocumento())
                 .email(entity.getEmail())
-                .tipoSolicitacao(entity.getTipoSolicitacao())
+                // CORREÇÃO AQUI: Transforma o Enum SicTipo em String de forma segura
+                .tipoSolicitacao(entity.getTipoSolicitacao() != null ? entity.getTipoSolicitacao().name() : null)
                 .mensagem(entity.getMensagem())
                 .status(entity.getStatus())
                 .dataSolicitacao(entity.getDataSolicitacao())
                 .respostaOficial(entity.getRespostaOficial())
-                .urlAnexoResposta(entity.getUrlAnexoResposta())
                 .dataResposta(entity.getDataResposta())
-                .justificativaProrrogacao(entity.getJustificativaProrrogacao())
-                .tramites(entity.getTramites() != null 
-                        ? entity.getTramites().stream()
-                            .map(SicTramiteResponseDTO::fromEntity)
-                            .collect(Collectors.toList()) 
-                        : new ArrayList<>())
+                .urlAnexoSolicitacao(entity.getUrlAnexoSolicitacao())
+                .urlAnexoResposta(entity.getUrlAnexoResposta())
+                .tramites(entity.getTramites() != null ? 
+                        entity.getTramites().stream().map(SicTramiteResponseDTO::fromEntity).collect(Collectors.toList()) 
+                        : null)
                 .build();
     }
 }

@@ -1,6 +1,6 @@
 package br.com.horizon.portal.application.service;
 
-//import br.com.horizon.portal.application.dto.sic.SicEstatisticasDTO;
+import br.com.horizon.portal.application.dto.sic.SicEstatisticasDTO;
 import br.com.horizon.portal.application.dto.sic.SicSolicitacaoRequestDTO;
 import br.com.horizon.portal.application.dto.sic.SicSolicitacaoResponseDTO;
 import br.com.horizon.portal.infrastructure.persistence.entity.SicSolicitacaoEntity;
@@ -31,12 +31,11 @@ import java.util.Random;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.time.format.DateTimeFormatter;
-//import java.time.Duration;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.awt.Color;
 
-// IMPORTS PADRONIZADOS OPENPDF
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
@@ -133,6 +132,16 @@ public class SicSolicitacaoService {
         repository.save(entity);
     }
 
+    // DEVOLVIDO: Método de Estatísticas
+    public SicEstatisticasDTO obterEstatisticas() {
+        List<SicSolicitacaoEntity> todos = repository.findAll();
+        long respondidos = todos.stream().filter(s -> s.getStatus() == SicStatus.RESPONDIDO).count();
+        long emAberto = todos.stream().filter(s -> s.getStatus() == SicStatus.RECEBIDO || s.getStatus() == SicStatus.EM_ANALISE).count();
+        long negados = todos.stream().filter(s -> s.getStatus() == SicStatus.NEGADO).count();
+        double tempoMedio = todos.stream().filter(s -> s.getDataResposta() != null).mapToLong(s -> Duration.between(s.getDataSolicitacao(), s.getDataResposta()).toDays()).average().orElse(0.0);
+        return SicEstatisticasDTO.builder().totalPedidos(todos.size()).pedidosRespondidos(respondidos).pedidosEmAberto(emAberto).pedidosNegados(negados).tempoMedioRespostaDias(tempoMedio).build();
+    }
+
     @Transactional(readOnly = true)
     public Page<SicSolicitacaoResponseDTO> listarParaAdmin(String busca, String statusFiltro, LocalDate dataInicio, LocalDate dataFim, Pageable pageable) {
         String buscaSegura = (busca != null) ? busca : "";
@@ -148,9 +157,9 @@ public class SicSolicitacaoService {
     @Transactional(readOnly = true)
     public byte[] exportarCsvAdmin(String busca, String statusFiltro, LocalDate dataInicio, LocalDate dataFim) {
         Page<SicSolicitacaoResponseDTO> dados = listarParaAdmin(busca, statusFiltro, dataInicio, dataFim, PageRequest.of(0, 10000));
-        StringBuilder csv = new StringBuilder("Protocolo;Cidadão;Status;Data\n");
+        StringBuilder csv = new StringBuilder("Protocolo;Cidadão;Documento;Status;Data\n");
         for (SicSolicitacaoResponseDTO r : dados.getContent()) {
-            csv.append(r.getProtocolo()).append(";").append(r.getNome()).append(";").append(r.getStatus()).append(";").append(r.getDataSolicitacao()).append("\n");
+            csv.append(r.getProtocolo()).append(";").append(r.getNome()).append(";").append(r.getDocumento()).append(";").append(r.getStatus()).append(";").append(r.getDataSolicitacao()).append("\n");
         }
         return csv.toString().getBytes();
     }
@@ -167,8 +176,6 @@ public class SicSolicitacaoService {
             PdfWriter.getInstance(document, out);
             document.open();
 
-            // --- CORREÇÃO DO CAMINHO DO BRASÃO ---
-            // Removido 'portal-transparencia' do início para evitar duplicação no Windows
             String caminhoFisicoBrasao = "Imagens\\brasao.png";
             File file = new File(caminhoFisicoBrasao);
 
@@ -185,7 +192,6 @@ public class SicSolicitacaoService {
                 log.warn("Brasão não encontrado em: {}", file.getAbsolutePath());
             }
 
-            // --- CABEÇALHO ---
             Font fontTitulo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, Color.BLACK);
             Font fontSub = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.DARK_GRAY);
             
@@ -198,7 +204,6 @@ public class SicSolicitacaoService {
             pSub.setSpacingAfter(20f);
             document.add(pSub);
 
-            // --- TABELA ---
             PdfPTable table = new PdfPTable(6);
             table.setWidthPercentage(100);
             table.setWidths(new float[]{2f, 4f, 2.5f, 2f, 2.5f, 2.5f});

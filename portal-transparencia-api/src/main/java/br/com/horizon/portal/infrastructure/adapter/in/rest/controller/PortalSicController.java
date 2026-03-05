@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/portal/sic/solicitacoes")
 @RequiredArgsConstructor
@@ -31,6 +33,19 @@ public class PortalSicController {
         // A exigência do documento aqui blinda a consulta contra curiosos (Regra da LAI)
         SicSolicitacaoResponseDTO response = service.consultarProtocolo(protocolo, documento);
         return ResponseEntity.ok(response);
+    }
+
+    // NOVO: Rota para o cidadão entrar com recurso
+    @PostMapping("/{protocolo}/recurso")
+    public ResponseEntity<Void> entrarComRecurso(
+            @PathVariable String protocolo,
+            @RequestBody Map<String, String> payload) {
+        
+        String documento = payload.get("documento");
+        String justificativa = payload.get("justificativa");
+        
+        service.entrarComRecurso(protocolo, documento, justificativa);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/estatisticas")
