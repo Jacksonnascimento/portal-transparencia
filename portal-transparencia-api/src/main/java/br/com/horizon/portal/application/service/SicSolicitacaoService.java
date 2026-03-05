@@ -84,7 +84,7 @@ public class SicSolicitacaoService {
         novaSolicitacao.getTramites().add(tramiteInicial);
         novaSolicitacao = repository.save(novaSolicitacao);
 
-        emailService.enviarEmailSic(novaSolicitacao.getEmail(), "Confirmação de Abertura", "Protocolo: " + protocoloGerado);
+        emailService.enviarEmailNotificacaoSic(novaSolicitacao, "Confirmação de Abertura de Protocolo - e-SIC");
         return mapearParaResponse(novaSolicitacao);
     }
 
@@ -119,7 +119,7 @@ public class SicSolicitacaoService {
         eventPublisher.publishEvent(new LogAuditoriaEvent("ATUALIZACAO", "tb_sic_solicitacao", String.valueOf(id), estadoAnterior, converterParaJson(solicitacao)));
 
         if (novoStatus == SicStatus.RESPONDIDO || novoStatus == SicStatus.NEGADO) {
-            emailService.enviarEmailSic(solicitacao.getEmail(), "Atualização e-SIC", "Seu protocolo " + solicitacao.getProtocolo() + " foi respondido.");
+            emailService.enviarEmailNotificacaoSic(solicitacao, "Atualização no seu Protocolo - e-SIC");
         }
     }
 
