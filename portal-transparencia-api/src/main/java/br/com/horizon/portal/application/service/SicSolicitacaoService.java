@@ -31,6 +31,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.time.format.DateTimeFormatter;
@@ -174,6 +175,17 @@ public class SicSolicitacaoService {
         
         double percentualAprovacao = (total > 0) ? ((double) pos / total) * 100.0 : 0.0;
 
+        // BUSCA DOS ÚLTIMOS 5 FEEDBACKS
+        List<SicEstatisticasDTO.SicFeedbackDTO> feedbacks = pesquisaSatisfacaoRepository
+                .findTop5ByModuloAvaliadoOrderByDataAvaliacaoDesc(ModuloAvaliado.SIC)
+                .stream()
+                .map(p -> SicEstatisticasDTO.SicFeedbackDTO.builder()
+                        .nota(p.getNota())
+                        .comentario(p.getComentario())
+                        .dataAvaliacao(p.getDataAvaliacao())
+                        .build())
+                .collect(Collectors.toList());
+
         double tempoMedio = todos.stream()
                 .filter(s -> s.getDataResposta() != null)
                 .mapToLong(s -> Duration.between(s.getDataSolicitacao(), s.getDataResposta()).toDays())
@@ -190,6 +202,7 @@ public class SicSolicitacaoService {
                 .notaMedia(notaMedia)
                 .totalAvaliacoes(total)
                 .percentualAprovacao(percentualAprovacao)
+                .ultimosFeedbacks(feedbacks) // Injetando a lista de feedbacks
                 .build();
     }
 

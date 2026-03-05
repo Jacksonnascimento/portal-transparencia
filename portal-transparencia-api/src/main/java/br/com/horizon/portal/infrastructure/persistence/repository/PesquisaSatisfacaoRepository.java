@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface PesquisaSatisfacaoRepository extends JpaRepository<PesquisaSatisfacaoEntity, Long> {
 
@@ -20,4 +22,7 @@ public interface PesquisaSatisfacaoRepository extends JpaRepository<PesquisaSati
     // 3. Conta quantas notas foram "Positivas" (4 e 5) para o cálculo de % de aprovação
     @Query("SELECT COUNT(p) FROM PesquisaSatisfacaoEntity p WHERE p.moduloAvaliado = :modulo AND p.nota >= 4")
     Long countAvaliacoesPositivas(@Param("modulo") ModuloAvaliado modulo);
+
+    // 4. Busca os 5 comentários mais recentes de um módulo específico
+    List<PesquisaSatisfacaoEntity> findTop5ByModuloAvaliadoOrderByDataAvaliacaoDesc(ModuloAvaliado modulo);
 }

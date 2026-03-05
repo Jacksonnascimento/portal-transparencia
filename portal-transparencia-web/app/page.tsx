@@ -5,9 +5,15 @@ import api from '@/services/api';
 import { Sidebar } from '@/components/Sidebar'; 
 import { 
   RefreshCw, Calendar, Tag, AlertCircle, TrendingUp, TrendingDown, 
-  Wallet, MessageSquare, Star, Clock, ShieldCheck, ChevronRight 
+  Wallet, MessageSquare, Star, Clock, ShieldCheck, ChevronRight, User, Quote
 } from 'lucide-react';
 import Link from 'next/link';
+
+interface SicFeedback {
+  nota: number;
+  comentario: string;
+  dataAvaliacao: string;
+}
 
 interface SicStats {
   totalPedidos: number;
@@ -20,6 +26,7 @@ interface SicStats {
   notaMedia: number;
   percentualAprovacao: number;
   totalAvaliacoes: number;
+  ultimosFeedbacks: SicFeedback[]; // NOVO CAMPO
 }
 
 export default function DashboardPage() {
@@ -67,13 +74,13 @@ export default function DashboardPage() {
 
   const formatMoney = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-  const renderStars = (nota: number) => {
+  const renderStars = (nota: number, size = 18) => {
     return (
-      <div className="flex text-amber-400 gap-1">
+      <div className="flex text-amber-400 gap-0.5">
         {[1, 2, 3, 4, 5].map((star) => (
           <Star 
             key={star} 
-            size={18} 
+            size={size} 
             fill={star <= Math.round(nota) ? "currentColor" : "none"} 
             className={star <= Math.round(nota) ? "" : "text-slate-200"}
           />
@@ -95,7 +102,6 @@ export default function DashboardPage() {
           </div>
           
           <div className="flex items-center gap-2">
-            {/* SELECT DE EXERCÍCIO */}
             <div className="flex items-center bg-white border border-slate-200 rounded-xl shadow-sm px-3 hover:border-slate-400 transition-all">
                <Calendar size={14} className="text-slate-400 mr-2" />
                <select 
@@ -107,7 +113,6 @@ export default function DashboardPage() {
                </select>
             </div>
 
-            {/* BOTÃO ATUALIZAR REFORMULADO */}
             <button 
               onClick={carregarDados} 
               disabled={loading}
@@ -156,10 +161,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* --- SEÇÃO OPERACIONAL: E-SIC E SATISFAÇÃO --- */}
+        {/* --- SEÇÃO OPERACIONAL E SATISFAÇÃO --- */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-            
-            {/* CARD EFICIÊNCIA E-SIC */}
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-md">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                     <h3 className="font-bold text-slate-800 flex items-center gap-2 uppercase tracking-tighter text-xs">
@@ -188,11 +191,10 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* CARD SATISFAÇÃO (REFORMULADO) */}
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-md">
                 <div className="p-6 border-b border-slate-100">
                     <h3 className="font-bold text-slate-800 flex items-center gap-2 uppercase tracking-tighter text-xs">
-                        <ShieldCheck className="text-emerald-500" size={16}/> Avaliação do Cidadão
+                        <ShieldCheck className="text-emerald-500" size={16}/> Avaliação do Cidadão (PNTP)
                     </h3>
                 </div>
                 <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -203,33 +205,66 @@ export default function DashboardPage() {
                             {renderStars(sicStats?.notaMedia || 0)}
                         </div>
                     </div>
-
                     <div className="space-y-4">
                         <div className="flex justify-between items-end">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aprovação</p>
                             <span className="text-sm font-black text-emerald-600">{sicStats?.percentualAprovacao.toFixed(1)}%</span>
                         </div>
-                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
-                            <div 
-                                className="h-full bg-emerald-500 rounded-full transition-all duration-1000" 
-                                style={{ width: `${sicStats?.percentualAprovacao || 0}%` }}
-                            ></div>
+                        <div className="h-2 bg-slate-100 rounded-full border border-slate-100">
+                            <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${sicStats?.percentualAprovacao || 0}%` }}></div>
                         </div>
-                        <p className="text-[9px] text-slate-400 font-bold uppercase text-right tracking-tighter">Total de {sicStats?.totalAvaliacoes} avaliações recebidas</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase text-right tracking-tighter">Base: {sicStats?.totalAvaliacoes} avaliações</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        {/* --- TABELA DE LANÇAMENTOS --- */}
+        {/* --- NOVO: VOZ DO CIDADÃO (FEEDBACKS RECENTES) --- */}
+        <div className="mb-10">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2 px-2">
+            <Quote size={14} className="text-slate-300"/> Feedbacks Recentes (e-SIC)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {loading ? [...Array(5)].map((_, i) => (
+              <div key={i} className="h-32 bg-slate-100 animate-pulse rounded-2xl border border-slate-200"></div>
+            )) : (
+              sicStats?.ultimosFeedbacks?.map((fb, idx) => (
+                <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:border-slate-300 transition-all group">
+                  <div>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="p-1.5 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
+                        <User size={14} className="text-slate-400 group-hover:text-blue-500"/>
+                      </div>
+                      {renderStars(fb.nota, 12)}
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed italic line-clamp-3">
+                      "{fb.comentario || 'Sem comentário.'}"
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-50 flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                    <span>Cidadão</span>
+                    <span>{new Date(fb.dataAvaliacao).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                </div>
+              ))
+            )}
+            {!loading && (!sicStats?.ultimosFeedbacks || sicStats.ultimosFeedbacks.length === 0) && (
+              <div className="col-span-5 py-10 bg-white rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400">
+                <p className="text-[10px] font-bold uppercase tracking-widest">Nenhuma avaliação detalhada recebida</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* --- MONITORAMENTO DE RECEITAS --- */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all">
           <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
              <h3 className="font-bold text-slate-800 text-xs uppercase tracking-tighter flex items-center gap-2">
-                <Tag size={14} className="text-slate-400"/> Últimos Lançamentos
+                <Tag size={14} className="text-slate-400"/> Atividade Recente
              </h3>
              <Link href="/receitas" className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline flex items-center gap-1">Auditoria Completa <ChevronRight size={12}/></Link>
           </div>
-          <table className="w-full text-left">
+          <table className="w-full text-left text-xs">
             <thead>
               <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                 <th className="px-8 py-4">Origem / Fonte de Recurso</th>
@@ -237,12 +272,12 @@ export default function DashboardPage() {
                 <th className="px-8 py-4 text-right">Valor Líquido</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 text-xs">
+            <tbody className="divide-y divide-slate-50">
               {loading ? [...Array(3)].map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={3} className="h-14 bg-slate-50/50"></td></tr>)
               : receitas.map((item, i) => (
                 <tr key={i} className="hover:bg-slate-50 transition-colors group">
                   <td className="px-8 py-4">
-                    <p className="font-bold text-slate-700">{item.origem || "Lançamento Manual"}</p>
+                    <p className="font-bold text-slate-700">{item.origem || "Lançamento Automático"}</p>
                     <p className="text-[10px] text-slate-400 font-medium truncate max-w-[400px] uppercase tracking-tighter">{item.fonteRecursos}</p>
                   </td>
                   <td className="px-8 py-4 text-slate-500 font-bold text-center text-[10px]">{new Date(item.dataLancamento).toLocaleDateString('pt-BR')}</td>
@@ -251,9 +286,6 @@ export default function DashboardPage() {
               ))}
             </tbody>
           </table>
-          {!loading && receitas.length === 0 && (
-              <div className="p-12 text-center text-slate-300 font-black uppercase text-[10px] tracking-[0.2em]">Sem dados para exibir</div>
-          )}
         </div>
       </main>
     </div>
