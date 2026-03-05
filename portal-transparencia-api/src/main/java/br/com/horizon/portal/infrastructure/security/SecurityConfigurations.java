@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -29,16 +30,21 @@ public class SecurityConfigurations {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
-                .cors(cors -> cors.configure(httpSecurity)) 
-                                                           
+                // CORREÇÃO 2: Usa Customizer.withDefaults() para injetar o Bean corsConfigurationSource automaticamente
+                .cors(Customizer.withDefaults()) 
+                
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        // CORREÇÃO 1: Libera a rota de erro interna do Spring para evitar o Falso 403
+                        .requestMatchers("/error").permitAll() 
+                        
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/portal/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/portal/sic/solicitacoes").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/portal/sic/solicitacoes/*/recurso").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/portal/satisfacao").permitAll()
+                        
                         .anyRequest().authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
@@ -58,7 +64,7 @@ public class SecurityConfigurations {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // CORREÇÃO CRÍTICA DO CORS PARA AMBIENTE DE DEV
+        // Configurações para ambiente de desenvolvimento
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
