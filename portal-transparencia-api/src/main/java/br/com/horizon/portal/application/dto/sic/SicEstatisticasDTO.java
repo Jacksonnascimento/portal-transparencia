@@ -10,5 +10,7 @@ public class SicEstatisticasDTO {
     private long pedidosRespondidos;
     private long pedidosEmAberto;
     private long pedidosNegados;
+    private long pedidosEmAlerta;    // Faltando 3 dias ou menos
+    private long pedidosExpirados;   // Passou do prazo legal
     private double tempoMedioRespostaDias;
 }

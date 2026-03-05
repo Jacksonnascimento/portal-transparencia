@@ -25,6 +25,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -132,14 +133,47 @@ public class SicSolicitacaoService {
         repository.save(entity);
     }
 
-    // DEVOLVIDO: Método de Estatísticas
     public SicEstatisticasDTO obterEstatisticas() {
         List<SicSolicitacaoEntity> todos = repository.findAll();
-        long respondidos = todos.stream().filter(s -> s.getStatus() == SicStatus.RESPONDIDO).count();
-        long emAberto = todos.stream().filter(s -> s.getStatus() == SicStatus.RECEBIDO || s.getStatus() == SicStatus.EM_ANALISE).count();
-        long negados = todos.stream().filter(s -> s.getStatus() == SicStatus.NEGADO).count();
-        double tempoMedio = todos.stream().filter(s -> s.getDataResposta() != null).mapToLong(s -> Duration.between(s.getDataSolicitacao(), s.getDataResposta()).toDays()).average().orElse(0.0);
-        return SicEstatisticasDTO.builder().totalPedidos(todos.size()).pedidosRespondidos(respondidos).pedidosEmAberto(emAberto).pedidosNegados(negados).tempoMedioRespostaDias(tempoMedio).build();
+        LocalDateTime hoje = LocalDateTime.now();
+
+        long respondidos = 0;
+        long negados = 0;
+        long alertas = 0;
+        long expirados = 0;
+        long emAberto = 0;
+
+        for (SicSolicitacaoEntity s : todos) {
+            boolean isConcluido = (s.getStatus() == SicStatus.RESPONDIDO || s.getStatus() == SicStatus.NEGADO);
+            
+            if (s.getStatus() == SicStatus.RESPONDIDO) respondidos++;
+            else if (s.getStatus() == SicStatus.NEGADO) negados++;
+            else emAberto++;
+
+            if (!isConcluido) {
+                int prazoLegal = (s.getStatus() == SicStatus.PRORROGADO) ? 30 : 20;
+                long diasCorridos = ChronoUnit.DAYS.between(s.getDataSolicitacao(), hoje);
+                long restantes = prazoLegal - diasCorridos;
+
+                if (restantes < 0) expirados++;
+                else if (restantes <= 3) alertas++;
+            }
+        }
+
+        double tempoMedio = todos.stream()
+                .filter(s -> s.getDataResposta() != null)
+                .mapToLong(s -> Duration.between(s.getDataSolicitacao(), s.getDataResposta()).toDays())
+                .average().orElse(0.0);
+
+        return SicEstatisticasDTO.builder()
+                .totalPedidos(todos.size())
+                .pedidosRespondidos(respondidos)
+                .pedidosEmAberto(emAberto)
+                .pedidosNegados(negados)
+                .pedidosEmAlerta(alertas)
+                .pedidosExpirados(expirados)
+                .tempoMedioRespostaDias(tempoMedio)
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -147,11 +181,37 @@ public class SicSolicitacaoService {
         String buscaSegura = (busca != null) ? busca : "";
         LocalDateTime inicio = (dataInicio != null) ? dataInicio.atStartOfDay() : LocalDateTime.of(2000, 1, 1, 0, 0);
         LocalDateTime fim = (dataFim != null) ? dataFim.atTime(LocalTime.MAX) : LocalDateTime.of(2100, 12, 31, 23, 59);
-        boolean filtrarStatus = !("TODOS".equalsIgnoreCase(statusFiltro));
+
+        // Lógica de Datas para Prazos (LAI)
+        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime vencido20 = agora.minusDays(20);
+        LocalDateTime alerta20Inicio = agora.minusDays(17);
+        LocalDateTime vencido30 = agora.minusDays(30);
+        LocalDateTime alerta30Inicio = agora.minusDays(27);
+
+        // Mapeamento do Filtro Especial de Prazos
+        boolean apenasAlertas = "ALERTAS".equalsIgnoreCase(statusFiltro);
+        boolean apenasExpirados = "EXPIRADOS".equalsIgnoreCase(statusFiltro);
+
+        boolean filtrarStatus = !("TODOS".equalsIgnoreCase(statusFiltro)) && !apenasAlertas && !apenasExpirados;
+
         List<SicStatus> statusList = "PENDENTES".equalsIgnoreCase(statusFiltro) 
             ? Arrays.asList(SicStatus.RECEBIDO, SicStatus.EM_ANALISE, SicStatus.PRORROGADO, SicStatus.RECURSO_SOLICITADO)
             : (filtrarStatus ? List.of(SicStatus.valueOf(statusFiltro.toUpperCase())) : List.of(SicStatus.RECEBIDO));
-        return repository.buscarComFiltros(buscaSegura, filtrarStatus, statusList, inicio, fim, pageable).map(this::mapearParaResponse);
+
+        return repository.buscarComFiltros(
+                buscaSegura, 
+                filtrarStatus, 
+                statusList, 
+                inicio, 
+                fim, 
+                apenasAlertas, 
+                apenasExpirados,
+                alerta20Inicio,
+                vencido20,
+                alerta30Inicio,
+                vencido30,
+                pageable).map(this::mapearParaResponse);
     }
 
     @Transactional(readOnly = true)
@@ -188,8 +248,6 @@ public class SicSolicitacaoService {
                 } catch (Exception e) {
                     log.error("Erro ao carregar imagem: {}", e.getMessage());
                 }
-            } else {
-                log.warn("Brasão não encontrado em: {}", file.getAbsolutePath());
             }
 
             Font fontTitulo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, Color.BLACK);
