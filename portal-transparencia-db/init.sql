@@ -301,3 +301,37 @@ CREATE TABLE IF NOT EXISTS tb_sic_tramite (
 
 --  Criar um índice para acelerar a busca da linha do tempo
 CREATE INDEX IF NOT EXISTS idx_tramite_solicitacao ON tb_sic_tramite(solicitacao_id);
+-- V4__create_table_diarias.sql (Ajuste o número V4 para o seu atual)
+
+CREATE TABLE tb_diarias_passagens (
+    id BIGSERIAL PRIMARY KEY,
+    exercicio INT NOT NULL,
+    orgao_id BIGINT, -- Se houver vínculo com secretaria, ou pode ser texto livre
+    nome_favorecido VARCHAR(255) NOT NULL,
+    cargo_favorecido VARCHAR(150),
+    cpf_cnpj_favorecido VARCHAR(20),
+    
+    destino_viagem VARCHAR(255) NOT NULL,
+    motivo_viagem TEXT NOT NULL,
+    
+    data_saida DATE NOT NULL,
+    data_retorno DATE NOT NULL,
+    quantidade_diarias NUMERIC(5, 2),
+    
+    valor_diarias NUMERIC(15, 2) DEFAULT 0.00,
+    valor_passagens NUMERIC(15, 2) DEFAULT 0.00,
+    valor_devolvido NUMERIC(15, 2) DEFAULT 0.00,
+    valor_total NUMERIC(15, 2) GENERATED ALWAYS AS (valor_diarias + valor_passagens - valor_devolvido) STORED,
+    
+    numero_processo VARCHAR(50),
+    portaria_concessao VARCHAR(50),
+    
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP
+);
+
+-- Índices essenciais para consultas rápidas no Portal (PNTP exige busca por nome e ano)
+CREATE INDEX idx_diarias_exercicio ON tb_diarias_passagens(exercicio);
+CREATE INDEX idx_diarias_favorecido ON tb_diarias_passagens(nome_favorecido);
+CREATE INDEX idx_diarias_data_saida ON tb_diarias_passagens(data_saida);

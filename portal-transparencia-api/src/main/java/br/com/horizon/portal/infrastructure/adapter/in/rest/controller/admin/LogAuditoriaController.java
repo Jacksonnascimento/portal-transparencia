@@ -1,4 +1,4 @@
-package br.com.horizon.portal.infrastructure.adapter.in.rest.controller;
+package br.com.horizon.portal.infrastructure.adapter.in.rest.controller.admin;
 
 import br.com.horizon.portal.infrastructure.persistence.entity.LogAuditoriaEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.LogAuditoriaRepository;

@@ -16,7 +16,8 @@ import {
   HelpCircle,
   BookOpen,
   MessageSquare,
-  Scale 
+  Scale,
+  Plane // Ícone adicionado para Diárias
 } from "lucide-react";
 import api from "@/services/api";
 
@@ -61,6 +62,7 @@ export function Sidebar() {
     { label: "Receitas", href: "/receitas", icon: TrendingUp },
     { label: "Dívida Ativa", href: "/divida-ativa", icon: Scale }, 
     { label: "Despesas", href: "/despesas", icon: TrendingDown },
+    { label: "Diárias", href: "/diarias", icon: Plane }, // NOVO ITEM ADICIONADO
     { label: "Auditoria", href: "/auditoria", icon: History },
     { label: "Carta de Serviços", href: "/servicos", icon: BookOpen }, 
     { label: "Gestão do e-SIC", href: "/e-sic", icon: MessageSquare },
@@ -87,7 +89,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-6 space-y-1">
+      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;

@@ -1,4 +1,4 @@
-package br.com.horizon.portal.infrastructure.adapter.in.rest.controller;
+package br.com.horizon.portal.infrastructure.adapter.in.rest.controller.portal;
 
 import br.com.horizon.portal.application.dto.sic.SicEstatisticasDTO;
 import br.com.horizon.portal.application.dto.sic.SicSolicitacaoRequestDTO;
