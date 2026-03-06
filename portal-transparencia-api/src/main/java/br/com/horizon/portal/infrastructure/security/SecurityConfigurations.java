@@ -41,6 +41,10 @@ public class SecurityConfigurations {
                         
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/portal/**").permitAll()
+                        
+                        // 👇 NOVA LINHA: Libera a rota de upload de arquivos (POST) para o cidadão
+                        .requestMatchers(HttpMethod.POST, "/api/v1/portal/arquivos/upload").permitAll()
+                        
                         .requestMatchers(HttpMethod.POST, "/api/v1/portal/sic/solicitacoes").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/portal/sic/solicitacoes/*/recurso").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/portal/satisfacao").permitAll()
