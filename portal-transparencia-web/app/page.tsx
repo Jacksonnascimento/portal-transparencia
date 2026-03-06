@@ -97,7 +97,7 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Painel de Controle</h2>
             <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
-               <div className="w-1 h-1 bg-slate-300 rounded-full"></div> Horizon AJ • Gestão de Transparência
+               <span className="w-1 h-1 bg-slate-300 rounded-full"></span> Horizon AJ • Gestão de Transparência
             </p>
           </div>
           
@@ -134,7 +134,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Receita Arrecadada
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Receita Arrecadada
             </p>
             <h4 className="text-3xl font-black text-slate-900 tracking-tighter">{loading ? "..." : formatMoney(totalReal)}</h4>
             <div className="mt-4 pt-4 border-t border-slate-50 flex items-center gap-2 text-emerald-600 font-bold text-[10px] uppercase">
@@ -144,7 +144,7 @@ export default function DashboardPage() {
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> Despesas Empenhadas
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Despesas Empenhadas
              </p>
             <h4 className="text-3xl font-black text-slate-900 tracking-tighter">R$ 0,00</h4>
             <div className="mt-4 pt-4 border-t border-slate-50 flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase">
