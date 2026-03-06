@@ -1,5 +1,21 @@
 import api from './api';
 
+// Interface para os trâmites da Linha do Tempo (Timeline)
+export interface SicTramiteDTO {
+  id?: number;
+  status: string;
+  observacao?: string;
+  descricao?: string; 
+  dataTramite: string;
+}
+
+// Interface para as Avaliações de Satisfação Recentes (Estrelinhas)
+export interface SicFeedbackDTO {
+  nota: number;
+  comentario: string;
+  dataAvaliacao: string;
+}
+
 // DTOs perfeitamente alinhados com o Backend Java
 export interface SicSolicitacaoRequestDTO {
   nome: string;
@@ -8,24 +24,32 @@ export interface SicSolicitacaoRequestDTO {
   tipoSolicitacao: string; // Ex: INFORMACAO, DENUNCIA, etc (Baseado no Enum SicTipo)
   mensagem: string;
   sigilo: boolean;
-  urlAnexoSolicitacao?: string;
+  urlAnexoSolicitacao?: string; // Suporta múltiplos links separados por vírgula
 }
 
 export interface SicSolicitacaoResponseDTO {
   protocolo: string;
-  status: string; // Ex: ABERTO, RESPONDIDO
+  status: string; // Ex: RECEBIDO, EM_ANALISE, RESPONDIDO
   dataSolicitacao: string;
   respostaOficial?: string;
   urlAnexoResposta?: string;
   dataResposta?: string;
   justificativaProrrogacao?: string;
+  tramites?: SicTramiteDTO[]; // Array injetado para desenhar o histórico visual
 }
 
 export interface SicEstatisticasDTO {
-  totalSolicitacoes: number;
-  abertas: number;
-  respondidas: number;
+  totalPedidos: number;
+  pedidosEmAberto: number;
+  pedidosRespondidos: number;
+  pedidosNegados?: number;
+  pedidosEmAlerta?: number;
+  pedidosExpirados?: number;
   tempoMedioRespostaDias: number;
+  notaMedia?: number;
+  totalAvaliacoes?: number;
+  percentualAprovacao?: number;
+  ultimosFeedbacks?: SicFeedbackDTO[]; // Lista com os últimos comentários do cidadão
 }
 
 export const sicService = {

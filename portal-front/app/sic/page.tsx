@@ -140,7 +140,8 @@ export default function SicOuvidoriaPage() {
       const payloadSatisfacao = {
         nota: satisfacao.nota,
         comentario: satisfacao.comentario,
-        moduloAvaliado: 'ESIC'
+        // CORRIGIDO AQUI: Alterado de 'ESIC' para 'SIC' para alinhar com o Backend
+        moduloAvaliado: 'SIC' as 'SIC'
       };
 
       await satisfacaoService.registrarAvaliacao(payloadSatisfacao);

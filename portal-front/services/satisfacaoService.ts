@@ -3,8 +3,8 @@ import api from './api';
 export interface PesquisaSatisfacaoRequestDTO {
   nota: number; // Ex: 1 a 5
   comentario?: string;
-  // O back-end exige a chave 'moduloAvaliado' baseada no Enum ModuloAvaliado (PORTAL, ESIC)
-  moduloAvaliado: 'PORTAL' | 'ESIC'; 
+  // O back-end exige a chave 'moduloAvaliado' baseada no Enum ModuloAvaliado. Removido 'ESIC'.
+  moduloAvaliado: 'PORTAL' | 'SIC'; 
 }
 
 export const satisfacaoService = {
