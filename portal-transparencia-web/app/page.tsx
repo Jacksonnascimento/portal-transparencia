@@ -26,7 +26,7 @@ interface SicStats {
   notaMedia: number;
   percentualAprovacao: number;
   totalAvaliacoes: number;
-  ultimosFeedbacks: SicFeedback[]; // NOVO CAMPO
+  ultimosFeedbacks: SicFeedback[];
 }
 
 export default function DashboardPage() {
@@ -89,11 +89,19 @@ export default function DashboardPage() {
     );
   };
 
+  // Cálculos limpos da barra de aprovação extraídos para fora do HTML
+  const percentual = Number(sicStats?.percentualAprovacao || 0);
+  const larguraBarra = Math.min(Math.max(percentual, 0), 100);
+  const corTextoAprovacao = percentual >= 70 ? 'text-emerald-600' : percentual >= 50 ? 'text-amber-500' : 'text-red-500';
+  const corFundoAprovacao = percentual >= 70 ? 'bg-emerald-500' : percentual >= 50 ? 'bg-amber-400' : 'bg-red-500';
+
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] text-slate-900 font-sans text-sm">
       <Sidebar />
       <main className="flex-1 p-8 overflow-y-auto">
-        <header className="flex items-center justify-between mb-10">
+        
+        {/* HEADER */}
+        <header className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Painel de Controle</h2>
             <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
@@ -131,7 +139,7 @@ export default function DashboardPage() {
         </header>
 
         {/* --- CARDS FINANCEIROS --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Receita Arrecadada
@@ -162,7 +170,7 @@ export default function DashboardPage() {
         </div>
 
         {/* --- SEÇÃO OPERACIONAL E SATISFAÇÃO --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-md">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                     <h3 className="font-bold text-slate-800 flex items-center gap-2 uppercase tracking-tighter text-xs">
@@ -205,22 +213,33 @@ export default function DashboardPage() {
                             {renderStars(sicStats?.notaMedia || 0)}
                         </div>
                     </div>
+                    
+                    {/* BARRA DE APROVAÇÃO CORRIGIDA */}
                     <div className="space-y-4">
                         <div className="flex justify-between items-end">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aprovação</p>
-                            <span className="text-sm font-black text-emerald-600">{sicStats?.percentualAprovacao.toFixed(1)}%</span>
+                            <span className={`text-sm font-black ${corTextoAprovacao}`}>
+                                {percentual.toFixed(1)}%
+                            </span>
                         </div>
-                        <div className="h-2 bg-slate-100 rounded-full border border-slate-100">
-                            <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${sicStats?.percentualAprovacao || 0}%` }}></div>
+                        
+                        <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                            <div 
+                                className={`h-full rounded-full transition-all duration-1000 ease-out ${corFundoAprovacao}`} 
+                                style={{ width: `${larguraBarra}%` }}
+                            ></div>
                         </div>
-                        <p className="text-[9px] text-slate-400 font-bold uppercase text-right tracking-tighter">Base: {sicStats?.totalAvaliacoes} avaliações</p>
+                        
+                        <p className="text-[9px] text-slate-400 font-bold uppercase text-right tracking-tighter">
+                            Base: {sicStats?.totalAvaliacoes || 0} avaliações
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
 
         {/* --- NOVO: VOZ DO CIDADÃO (FEEDBACKS RECENTES) --- */}
-        <div className="mb-10">
+        <div className="mb-8">
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2 px-2">
             <Quote size={14} className="text-slate-300"/> Feedbacks Recentes (e-SIC)
           </h3>

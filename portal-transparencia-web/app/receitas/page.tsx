@@ -295,9 +295,10 @@ export default function ReceitasPage() {
           <div className="flex-1 overflow-x-auto">
             <table className="w-full text-left">
               <thead>
+                {/* O COMENTÁRIO FOI REMOVIDO DESTA LINHA */}
                 <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/50">
                   <th className="px-6 py-4">Data Lançamento</th>
-                  <th className="px-6 py-4">Cód. Natureza</th> {/* NOVA COLUNA AQUI */}
+                  <th className="px-6 py-4">Cód. Natureza</th>
                   <th className="px-6 py-4">Origem</th>
                   <th className="px-6 py-4">Fonte de Recurso</th>
                   <th className="px-6 py-4 text-right">Valor Arrecadado</th>
