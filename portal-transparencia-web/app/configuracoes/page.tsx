@@ -30,7 +30,6 @@ interface Configuracao {
   emailOuvidoria: string;
   politicaPrivacidade: string;
   termosUso: string;
-  // NOVOS CAMPOS DO E-SIC E SMTP
   enderecoSic: string;
   horarioAtendimentoSic: string;
   telefoneSic: string;
@@ -62,7 +61,6 @@ const formatTelefone = (value: string) => {
 };
 
 export default function ConfiguracoesPage() {
-  // Alterado para suportar a nova aba 'atendimento'
   const [activeTab, setActiveTab] = useState<'identidade' | 'juridico' | 'atendimento'>('identidade');
   const [formData, setFormData] = useState<Configuracao>({
     nomeEntidade: '', cnpj: '', urlBrasao: '', corPrincipal: '#0F172A',
@@ -191,7 +189,6 @@ export default function ConfiguracoesPage() {
           </div>
         </header>
 
-        {/* NAVEGAÇÃO POR ABAS ATUALIZADA */}
         <div className="flex gap-1 mb-8 bg-slate-200/50 p-1 rounded-2xl w-fit border border-slate-200 shadow-inner">
           <button 
             type="button"
@@ -205,7 +202,7 @@ export default function ConfiguracoesPage() {
             onClick={() => setActiveTab('atendimento')}
             className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'atendimento' ? 'bg-white text-black shadow-md' : 'text-slate-500 hover:text-slate-800'}`}
           >
-            <MapPin size={14} /> Atendimento e-SIC
+            <MapPin size={14} /> Atendimento / Ouvidoria
           </button>
           <button 
             type="button"
@@ -342,7 +339,7 @@ export default function ConfiguracoesPage() {
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                       <Globe size={14} /> Links Oficiais e Redes
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div className="relative">
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Site Institucional</label>
                         <Globe className="absolute left-3 top-[26px] text-slate-400" size={14} />
@@ -352,6 +349,12 @@ export default function ConfiguracoesPage() {
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Diário Oficial</label>
                         <FileText className="absolute left-3 top-[26px] text-slate-400" size={14} />
                         <input type="url" placeholder="https://" value={formData.diarioOficial} onChange={e => setFormData({...formData, diarioOficial: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
+                      </div>
+                      {/* CAMPO NOVO ADICIONADO AQUI */}
+                      <div className="relative">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Portal do Contribuinte</label>
+                        <ExternalLink className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                        <input type="url" placeholder="https://" value={formData.portalContribuinte} onChange={e => setFormData({...formData, portalContribuinte: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -377,11 +380,36 @@ export default function ConfiguracoesPage() {
             </div>
           )}
 
-          {/* NOVA ABA 2: ATENDIMENTO e-SIC E SMTP */}
+          {/* ABA 2: ATENDIMENTO e-SIC E SMTP */}
           {activeTab === 'atendimento' && (
             <div className="grid grid-cols-1 gap-6 animate-in slide-in-from-top-4 duration-300">
               <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
+                
+                {/* CAMPOS NOVOS DA OUVIDORIA (RODAPÉ) ADICIONADOS AQUI */}
                 <section>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+                    <Phone size={14} className="text-brand" /> Ouvidoria Geral (Rodapé do Portal)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="relative">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Link da Ouvidoria</label>
+                      <Link className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                      <input type="url" value={formData.linkOuvidoria} onChange={e => setFormData({...formData, linkOuvidoria: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" placeholder="https://ouvidoria..." />
+                    </div>
+                    <div className="relative">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Telefone Ouvidoria</label>
+                      <Phone className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                      <input type="text" value={formData.telefoneOuvidoria} onChange={e => setFormData({...formData, telefoneOuvidoria: formatTelefone(e.target.value)})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" placeholder="(00) 0000-0000" />
+                    </div>
+                    <div className="relative">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">E-mail Ouvidoria</label>
+                      <Mail className="absolute left-3 top-[26px] text-slate-400" size={14} />
+                      <input type="email" value={formData.emailOuvidoria} onChange={e => setFormData({...formData, emailOuvidoria: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" placeholder="ouvidoria@municipio.gov.br" />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="pt-8 border-t border-slate-100">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
                     <MapPin size={14} className="text-brand" /> Atendimento Físico do e-SIC
                   </h3>
