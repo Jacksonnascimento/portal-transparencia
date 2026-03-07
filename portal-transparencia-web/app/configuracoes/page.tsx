@@ -388,7 +388,7 @@ export default function ConfiguracoesPage() {
                 {/* CAMPOS NOVOS DA OUVIDORIA (RODAPÉ) ADICIONADOS AQUI */}
                 <section>
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-                    <Phone size={14} className="text-brand" /> Ouvidoria Geral (Rodapé do Portal)
+                    <Phone size={14} className="text-brand" /> Ouvidoria Geral 
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="relative">
