@@ -8,7 +8,6 @@ import {
 import Link from 'next/link';
 import api from '../../services/api';
 
-// Interface ajustada EXATAMENTE para o retorno da sua API
 interface DividaAtiva {
   id: number;
   nomeDevedor: string;
@@ -25,9 +24,13 @@ export default function DividaAtivaPage() {
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  // --- NOVOS ESTADOS DE PAGINAÇÃO ---
+  const [paginaAtual, setPaginaAtual] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+
   const [filtros, setFiltros] = useState({
     nome: '',
-    ano: '', // Deixado vazio para trazer todos os anos na carga inicial
+    ano: '', 
     tipo: ''
   });
 
@@ -43,31 +46,31 @@ export default function DividaAtivaPage() {
       if (filtros.ano) params.append('ano', filtros.ano);
       if (filtros.tipo) params.append('tipo', filtros.tipo);
       
-      params.append('page', '0');
-      params.append('size', '100');
+      // --- APLICAÇÃO DA PAGINAÇÃO DINÂMICA ---
+      params.append('page', paginaAtual.toString());
+      params.append('size', '100'); 
       params.append('sort', 'anoInscricao,desc');
 
-      console.log('Buscando dívida ativa com parâmetros:', params.toString());
-      
-      // ✅ ATUALIZADO: Consumindo a rota correta da controller Spring Boot
       const response = await api.get(`/portal/receitas/divida-ativa?${params.toString()}`);
-      
-      console.log('Resposta da API Dívida Ativa:', response.data);
 
-      // Tratamento robusto para extrair a lista, seja paginação ou array direto
       let dadosRecebidos: DividaAtiva[] = [];
       let total = 0;
+      let paginasTotaisApi = 0;
 
+      // Tratamento robusto e flexível da resposta do backend
       if (response.data && Array.isArray(response.data.content)) {
         dadosRecebidos = response.data.content;
         total = response.data.totalElements || dadosRecebidos.length;
+        paginasTotaisApi = response.data.totalPages || 0;
       } else if (Array.isArray(response.data)) {
         dadosRecebidos = response.data;
         total = dadosRecebidos.length;
+        paginasTotaisApi = Math.ceil(total / 100); 
       }
 
       setDividas(dadosRecebidos);
       setTotalRegistros(total);
+      setTotalPaginas(paginasTotaisApi); // Atualiza o state
       setFiltrosAplicados(filtros);
 
     } catch (err) {
@@ -76,12 +79,22 @@ export default function DividaAtivaPage() {
     } finally {
       setLoading(false);
     }
-  }, [filtros]);
+  }, [filtros, paginaAtual]); // Inclui paginaAtual nas dependências
 
+  // Dispara a busca quando a página mudar
   useEffect(() => {
     buscarDados();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, [paginaAtual]); 
+
+  // Reseta para a página 0 e busca
+  const handlePesquisar = () => {
+    if (paginaAtual === 0) {
+      buscarDados();
+    } else {
+      setPaginaAtual(0); 
+    }
+  };
 
   const handleExport = async (formato: 'csv' | 'pdf') => {
     setIsExporting(true);
@@ -92,7 +105,6 @@ export default function DividaAtivaPage() {
       if (filtrosAplicados.ano) params.append('ano', filtrosAplicados.ano);
       if (filtrosAplicados.tipo) params.append('tipo', filtrosAplicados.tipo);
 
-      // ✅ ATUALIZADO: Consumindo a rota de exportação correta
       const response = await api.get(`/portal/receitas/divida-ativa/exportar?${params.toString()}`, {
         responseType: 'blob',
       });
@@ -186,7 +198,7 @@ export default function DividaAtivaPage() {
               <option value="Taxas">Taxas</option>
             </select>
           </FilterBox>
-          <button onClick={buscarDados} className="bg-rose-600 text-white h-[46px] rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-colors shadow-md flex items-center justify-center gap-2">
+          <button onClick={handlePesquisar} className="bg-rose-600 text-white h-[46px] rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-colors shadow-md flex items-center justify-center gap-2">
             <Search size={16} /> Pesquisar
           </button>
         </div>
@@ -196,7 +208,7 @@ export default function DividaAtivaPage() {
         {totalRegistros} {totalRegistros === 1 ? 'registro encontrado' : 'registros encontrados'}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -227,7 +239,6 @@ export default function DividaAtivaPage() {
                     <div className="text-[10px] text-slate-400 font-bold mt-1">Inscrito em: {item.anoInscricao}</div>
                   </td>
                   <td className="px-6 py-4 text-right font-black text-rose-600 text-sm whitespace-nowrap bg-rose-50/30">
-                    {/* Alterado para pegar a propriedade exata valorTotalDivida */}
                     {formatMoney(item.valorTotalDivida)}
                   </td>
                 </tr>
@@ -238,6 +249,31 @@ export default function DividaAtivaPage() {
             </tbody>
           </table>
         </div>
+
+        {/* --- RODAPÉ DE PAGINAÇÃO --- */}
+        {!loading && dividas.length > 0 && (
+          <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              Página {paginaAtual + 1} de {totalPaginas || 1}
+            </span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setPaginaAtual(p => Math.max(0, p - 1))}
+                disabled={paginaAtual === 0 || loading}
+                className="px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                Anterior
+              </button>
+              <button 
+                onClick={() => setPaginaAtual(p => p + 1)}
+                disabled={paginaAtual >= totalPaginas - 1 || loading}
+                className="px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

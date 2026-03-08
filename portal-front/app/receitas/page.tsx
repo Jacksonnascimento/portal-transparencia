@@ -36,8 +36,12 @@ export default function ReceitasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selected, setSelected] = useState<Receita | null>(null);
 
+  // --- NOVOS ESTADOS DE PAGINAÇÃO ---
+  const [paginaAtual, setPaginaAtual] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+
   const [filtros, setFiltros] = useState({
-    exercicio: '', // CORRIGIDO: Inicia vazio para trazer todos os anos e mostrar os dados do seu INSERT
+    exercicio: '', 
     mes: '',
     codigoNatureza: '',
     origem: '',
@@ -71,7 +75,8 @@ export default function ReceitasPage() {
       if (filtros.dataInicio) params.append('dataInicio', filtros.dataInicio);
       if (filtros.dataFim) params.append('dataFim', filtros.dataFim);
       
-      params.append('page', '0');
+      // --- APLICAÇÃO DA PAGINAÇÃO DINÂMICA ---
+      params.append('page', paginaAtual.toString());
       params.append('size', '100');
       params.append('sort', 'dataLancamento,desc');
 
@@ -81,6 +86,8 @@ export default function ReceitasPage() {
       ]);
 
       setReceitas(resLista.data.content || []);
+      setTotalPaginas(resLista.data.totalPages || 0); // Define o total de páginas retornado
+      
       setResumo({
         totalArrecadado: resResumo.data.totalArrecadado || 0,
         totalRegistros: resResumo.data.totalRegistros || 0
@@ -94,12 +101,22 @@ export default function ReceitasPage() {
     } finally {
       setLoading(false);
     }
-  }, [filtros]);
+  }, [filtros, paginaAtual]); // Inclui paginaAtual nas dependências
 
+  // Dispara a busca quando a página muda (ou no carregamento inicial)
   useEffect(() => {
     buscarDados();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, [paginaAtual]); 
+
+  // Handler inteligente para a pesquisa (reseta para a página 0)
+  const handlePesquisar = () => {
+    if (paginaAtual === 0) {
+      buscarDados();
+    } else {
+      setPaginaAtual(0); // Mudar para 0 engatilha o useEffect automaticamente
+    }
+  };
 
   const handleExport = async (formato: 'csv' | 'pdf') => {
     setIsExporting(true);
@@ -224,19 +241,18 @@ export default function ReceitasPage() {
           <FilterBox label="Data Fim">
             <input type="date" value={filtros.dataFim} onChange={(e) => setFiltros({...filtros, dataFim: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none" />
           </FilterBox>
-          <button onClick={buscarDados} className="bg-slate-900 text-white h-[46px] rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[var(--cor-primaria)] transition-colors shadow-md flex items-center justify-center gap-2">
+          <button onClick={handlePesquisar} className="bg-slate-900 text-white h-[46px] rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[var(--cor-primaria)] transition-colors shadow-md flex items-center justify-center gap-2">
             <Search size={16} />
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200">
                 <th scope="col" className="px-6 py-4">Data / Cód. Natureza</th>
-                {/* Ajuste PNTP: Atualizado para evidenciar a Espécie */}
                 <th scope="col" className="px-6 py-4">Origem / Espécie</th>
                 <th scope="col" className="px-6 py-4 text-right">Previsão Atualizada</th>
                 <th scope="col" className="px-6 py-4 text-right">Valor Arrecadado</th>
@@ -254,7 +270,6 @@ export default function ReceitasPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-xs font-black text-slate-800 uppercase truncate max-w-[250px]" title={item.origem}>{item.origem}</div>
-                    {/* Ajuste PNTP: Prioriza a exibição da Espécie, com fallback na Categoria Econômica */}
                     <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide mt-0.5 truncate max-w-[250px]" title={item.especie || item.categoriaEconomica}>
                       {item.especie || item.categoriaEconomica}
                     </div>
@@ -281,12 +296,36 @@ export default function ReceitasPage() {
             </tbody>
           </table>
         </div>
+        
+        {/* --- RODAPÉ DE PAGINAÇÃO --- */}
+        {!loading && receitas.length > 0 && (
+          <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              Página {paginaAtual + 1} de {totalPaginas || 1}
+            </span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setPaginaAtual(p => Math.max(0, p - 1))}
+                disabled={paginaAtual === 0 || loading}
+                className="px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                Anterior
+              </button>
+              <button 
+                onClick={() => setPaginaAtual(p => p + 1)}
+                disabled={paginaAtual >= totalPaginas - 1 || loading}
+                className="px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {isModalOpen && selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsModalOpen(false)}>
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
-            
             <div className="bg-[var(--cor-primaria)] p-5 text-white flex justify-between items-center shrink-0">
               <div className="flex gap-3 items-center">
                 <div className="bg-white/20 p-2.5 rounded-xl" aria-hidden="true"><Landmark size={20}/></div>
@@ -301,7 +340,6 @@ export default function ReceitasPage() {
             <div className="p-5 overflow-y-auto space-y-5">
               <div className="grid grid-cols-2 gap-3">
                 <DetailField label="Cód. Natureza" value={selected.codigoNatureza} />
-                {/* Ajuste PNTP: Categoria Econômica foi inserida na listagem do modal */}
                 <DetailField label="Categoria Econômica" value={selected.categoriaEconomica} />
                 <DetailField label="Espécie" value={selected.especie} />
                 <DetailField label="Rubrica" value={selected.rubrica} />
@@ -344,7 +382,6 @@ export default function ReceitasPage() {
                   Fechar Detalhes
                 </button>
             </div>
-
           </div>
         </div>
       )}
