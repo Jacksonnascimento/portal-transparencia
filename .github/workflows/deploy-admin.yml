@@ -40,7 +40,8 @@ jobs:
           # INJETANDO A URL DA API AQUI TAMBÉM:
           build-args: |
             NEXT_PUBLIC_API_URL=/api-proxy
-
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
