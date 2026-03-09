@@ -335,3 +335,23 @@ CREATE TABLE tb_diarias_passagens (
 CREATE INDEX idx_diarias_exercicio ON tb_diarias_passagens(exercicio);
 CREATE INDEX idx_diarias_favorecido ON tb_diarias_passagens(nome_favorecido);
 CREATE INDEX idx_diarias_data_saida ON tb_diarias_passagens(data_saida);
+
+CREATE TABLE IF NOT EXISTS estrutura_organizacional (
+    id UUID PRIMARY KEY,
+    nome_orgao VARCHAR(255) NOT NULL,
+    sigla VARCHAR(50),
+    nome_dirigente VARCHAR(255) NOT NULL,
+    cargo_dirigente VARCHAR(255) NOT NULL,
+    horario_atendimento VARCHAR(255),
+    endereco_completo TEXT,
+    telefone_contato VARCHAR(50),
+    email_institucional VARCHAR(255),
+    link_curriculo TEXT,
+    criado_em TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP WITHOUT TIME ZONE,
+    criado_por VARCHAR(255),
+    atualizado_por VARCHAR(255)
+);
+
+-- Criar índices para otimizar as buscas no portal público
+CREATE INDEX IF NOT EXISTS idx_estrutura_nome_orgao ON estrutura_organizacional(nome_orgao);
