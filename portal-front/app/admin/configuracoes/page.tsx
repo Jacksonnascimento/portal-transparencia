@@ -20,6 +20,7 @@ export default function ConfigPage() {
   useEffect(() => {
     configService.getConfigs().then(data => setFormData(data));
   }, []);
+  
 
   // Salvar textos
   const handleSave = async () => {
