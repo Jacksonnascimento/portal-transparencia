@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // ESTADO LGPD (Banner de Cookies)
   const [showCookies, setShowCookies] = useState(false);
 
-  const brasaoUrl = "http://localhost:8080/api/v1/portal/configuracoes/brasao";
+  const brasaoUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/portal/configuracoes/brasao`;
 
   // ESTADOS DO MENU DE ACESSIBILIDADE
   const [isA11yOpen, setIsA11yOpen] = useState(false);
