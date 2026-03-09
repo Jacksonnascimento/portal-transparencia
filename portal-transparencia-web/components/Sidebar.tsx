@@ -28,6 +28,7 @@ export function Sidebar() {
     brasao: ''
   });
 
+  
   useEffect(() => {
     async function loadIdentity() {
       try {
