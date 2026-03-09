@@ -34,6 +34,7 @@ export default function DividaAtivaPage() {
     tipo: ''
   });
 
+  
   const [filtrosAplicados, setFiltrosAplicados] = useState(filtros);
   const anos = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - i).toString());
 
