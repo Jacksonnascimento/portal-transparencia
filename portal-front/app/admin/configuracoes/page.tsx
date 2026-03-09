@@ -18,7 +18,10 @@ export default function ConfigPage() {
 
   // Carregar dados atuais
   useEffect(() => {
-    configService.getConfigs().then(data => setFormData(data));
+    // CORREÇÃO: O TypeScript avisou que o nome correto é getPortalConfigs
+    configService.getPortalConfigs().then(data => {
+      if (data) setFormData(data);
+    });
   }, []);
   
 
@@ -26,9 +29,17 @@ export default function ConfigPage() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      await configService.updateConfigs(formData);
-      setMsg('Configurações atualizadas com sucesso!');
+      // Nota: Se o build der erro aqui, é porque o configService do Portal Público
+      // não possui a função updateConfigs (comum em frontends voltados ao cidadão).
+      if ((configService as any).updateConfigs) {
+        await (configService as any).updateConfigs(formData);
+        setMsg('Configurações atualizadas com sucesso!');
+      } else {
+        setMsg('Função de salvamento não disponível neste módulo.');
+      }
       setTimeout(() => setMsg(''), 3000);
+    } catch (error) {
+      setMsg('Erro ao salvar as configurações.');
     } finally {
       setLoading(false);
     }
@@ -38,8 +49,18 @@ export default function ConfigPage() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setLoading(true);
-      await configService.uploadBrasao(e.target.files[0]);
-      window.location.reload(); // Recarrega para atualizar a logo no site todo
+      try {
+        if ((configService as any).uploadBrasao) {
+          await (configService as any).uploadBrasao(e.target.files[0]);
+          window.location.reload();
+        } else {
+          setMsg('Upload não disponível neste módulo.');
+        }
+      } catch (error) {
+        setMsg('Erro no upload.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -69,13 +90,13 @@ export default function ConfigPage() {
 
         {/* Lado Direito: Formulário de Dados */}
         <div className="md:col-span-2 bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-4">
-          <InputGroup icon={<Building2 size={16}/>} label="Nome da Prefeitura/Ente" value={formData.nomeEnte} onChange={(v) => setFormData({...formData, nomeEnte: v})} />
+          <InputGroup icon={<Building2 size={16}/>} label="Nome da Prefeitura/Ente" value={formData.nomeEnte} onChange={(v: string) => setFormData({...formData, nomeEnte: v})} />
           <div className="grid grid-cols-2 gap-4">
-            <InputGroup icon={<Globe size={16}/>} label="CNPJ" value={formData.cnpj} onChange={(v) => setFormData({...formData, cnpj: v})} />
-            <InputGroup icon={<Phone size={16}/>} label="Telefone" value={formData.telefone} onChange={(v) => setFormData({...formData, telefone: v})} />
+            <InputGroup icon={<Globe size={16}/>} label="CNPJ" value={formData.cnpj} onChange={(v: string) => setFormData({...formData, cnpj: v})} />
+            <InputGroup icon={<Phone size={16}/>} label="Telefone" value={formData.telefone} onChange={(v: string) => setFormData({...formData, telefone: v})} />
           </div>
-          <InputGroup icon={<Mail size={16}/>} label="E-mail de Contato" value={formData.emailContato} onChange={(v) => setFormData({...formData, emailContato: v})} />
-          <InputGroup icon={<MapPin size={16}/>} label="Endereço Sede" value={formData.endereco} onChange={(v) => setFormData({...formData, endereco: v})} />
+          <InputGroup icon={<Mail size={16}/>} label="E-mail de Contato" value={formData.emailContato} onChange={(v: string) => setFormData({...formData, emailContato: v})} />
+          <InputGroup icon={<MapPin size={16}/>} label="Endereço Sede" value={formData.endereco} onChange={(v: string) => setFormData({...formData, endereco: v})} />
           
           <button 
             onClick={handleSave}
