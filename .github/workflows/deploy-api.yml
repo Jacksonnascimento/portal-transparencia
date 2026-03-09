@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'portal-transparencia-api/**' # Só acorda se mudar algo nesta pasta
+      - 'portal-transparencia-api/**'
 
 jobs:
   deploy:
@@ -29,7 +29,8 @@ jobs:
         with:
           context: ./portal-transparencia-api
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/horizon-api:latest
+          # AQUI: Escrevemos em minúsculo para o Docker não reclamar
+          tags: ghcr.io/jacksonnascimento/horizon-api:latest
 
       - name: Comandar a VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -39,6 +40,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~/horizon
-            export DOCKER_IMAGE_API=ghcr.io/${{ github.repository_owner }}/horizon-api:latest
+            # AQUI TAMBÉM: Nome em minúsculo
+            export DOCKER_IMAGE_API=ghcr.io/jacksonnascimento/horizon-api:latest
             docker compose pull horizon-api
             docker compose up -d horizon-api
