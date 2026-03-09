@@ -263,7 +263,7 @@ public class SicSolicitacaoService {
             PdfWriter.getInstance(document, out);
             document.open();
 
-            String caminhoFisicoBrasao = "Imagens\\brasao.png";
+            String caminhoFisicoBrasao = System.getProperty("user.dir") + File.separator + "Imagens" + File.separator + "brasao.png";
             File file = new File(caminhoFisicoBrasao);
 
             if (file.exists()) {
