@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'portal-transparencia/portal-front/**' # Só acorda se mudar o front público
+      - 'portal-front/**' # Ajustado: removido o prefixo redundante
 
 jobs:
   deploy:
@@ -33,7 +33,7 @@ jobs:
       - name: Build e Push
         uses: docker/build-push-action@v5
         with:
-          context: ./portal-transparencia/portal-front
+          context: ./portal-front # Ajustado: o robô agora entra direto na pasta certa
           push: true
           platforms: linux/arm64
           tags: ghcr.io/jacksonnascimento/horizon-portal:latest
