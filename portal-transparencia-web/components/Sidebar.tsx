@@ -17,7 +17,8 @@ import {
   BookOpen,
   MessageSquare,
   Scale,
-  Plane
+  Plane,
+  Network // <-- Ícone novo importado para o organograma
 } from "lucide-react";
 import api from "@/services/api";
 
@@ -60,6 +61,7 @@ export function Sidebar() {
 
   const menuItems = [
     { label: "Dashboard", href: "/", icon: LayoutDashboard },
+    { label: "Órgãos e Dirigentes", href: "/estrutura-organizacional", icon: Network }, // <-- NOVO MÓDULO AQUI!
     { label: "Receitas", href: "/receitas", icon: TrendingUp },
     { label: "Dívida Ativa", href: "/divida-ativa", icon: Scale }, 
     { label: "Despesas", href: "/despesas", icon: TrendingDown },
