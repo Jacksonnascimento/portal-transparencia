@@ -8,6 +8,7 @@ import {
 import Link from 'next/link';
 import api from '../../services/api';
 
+
 // Interface baseada no DiariaPassagemDTO.Response
 interface DiariaPassagem {
   id: number;
