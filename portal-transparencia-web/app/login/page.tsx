@@ -27,7 +27,7 @@ export default function LoginPage() {
         const response = await api.get('/portal/configuracoes');
         setConfig({
           nome: response.data.nomeEntidade || 'Horizon AJ',
-          brasao: response.data.urlBrasao ? `http://localhost:8080${response.data.urlBrasao}` : '',
+          brasao: response.data.urlBrasao ? `${process.env.NEXT_PUBLIC_API_URL || ''}${response.data.urlBrasao}` : '',
           cor: response.data.corPrincipal || '#0f172a'
         });
       } catch (err) {

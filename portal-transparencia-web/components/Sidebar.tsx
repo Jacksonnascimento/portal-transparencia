@@ -17,7 +17,7 @@ import {
   BookOpen,
   MessageSquare,
   Scale,
-  Plane // Ícone adicionado para Diárias
+  Plane
 } from "lucide-react";
 import api from "@/services/api";
 
@@ -35,7 +35,7 @@ export function Sidebar() {
         if (response.data) {
           setConfig({
             nome: response.data.nomeEntidade || 'Horizon AJ',
-            brasao: response.data.urlBrasao ? `http://localhost:8080${response.data.urlBrasao}?t=${Date.now()}` : ''
+            brasao: response.data.urlBrasao ? `${process.env.NEXT_PUBLIC_API_URL || ''}${response.data.urlBrasao}?t=${Date.now()}` : ''
           });
         }
       } catch (err) {
@@ -62,7 +62,7 @@ export function Sidebar() {
     { label: "Receitas", href: "/receitas", icon: TrendingUp },
     { label: "Dívida Ativa", href: "/divida-ativa", icon: Scale }, 
     { label: "Despesas", href: "/despesas", icon: TrendingDown },
-    { label: "Diárias", href: "/diarias", icon: Plane }, // NOVO ITEM ADICIONADO
+    { label: "Diárias", href: "/diarias", icon: Plane },
     { label: "Auditoria", href: "/auditoria", icon: History },
     { label: "Carta de Serviços", href: "/servicos", icon: BookOpen }, 
     { label: "Gestão do e-SIC", href: "/e-sic", icon: MessageSquare },
