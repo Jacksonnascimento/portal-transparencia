@@ -4,14 +4,21 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+
+# TRUQUE: Garante que a pasta public exista para o próximo estágio não dar erro
+RUN mkdir -p public
+
 RUN npm run build
 
 # 2. Estágio de Execução (Roda o site pronto)
 FROM node:20-alpine
 WORKDIR /app
+
+# Agora o COPY não vai falhar, pois a pasta existirá (mesmo que vazia)
 COPY --from=build /app/public ./public
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
+
 EXPOSE 3000
 CMD ["npm", "start"]
