@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'portal-front/**' # Ajustado: removido o prefixo redundante
+      - 'portal-front/**'
 
 jobs:
   deploy:
@@ -33,10 +33,13 @@ jobs:
       - name: Build e Push
         uses: docker/build-push-action@v5
         with:
-          context: ./portal-front # Ajustado: o robô agora entra direto na pasta certa
+          context: ./portal-front
           push: true
           platforms: linux/arm64
           tags: ghcr.io/jacksonnascimento/horizon-portal:latest
+          # INJETANDO A URL DA API AQUI:
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://91.98.201.11:8080/api/v1
 
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -48,4 +51,4 @@ jobs:
             cd ~/horizon
             export DOCKER_IMAGE_PORTAL=ghcr.io/jacksonnascimento/horizon-portal:latest
             docker compose pull horizon-portal
-            docker compose up -d horizon-portal
+            docker compose up -d --force-recreate horizon-portal

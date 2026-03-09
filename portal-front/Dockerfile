@@ -1,20 +1,23 @@
-# 1. Estágio de Build (Instala e compila o Next.js)
+# 1. Estágio de Build
 FROM node:20-alpine AS build
 WORKDIR /app
+
+# Recebe a variável do GitHub Actions
+ARG NEXT_PUBLIC_API_URL
+# Transforma o ARG em ENV para o Next.js enxergar durante o 'npm run build'
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 COPY package*.json ./
 RUN npm install
 COPY . .
 
-# TRUQUE: Garante que a pasta public exista para o próximo estágio não dar erro
 RUN mkdir -p public
-
 RUN npm run build
 
-# 2. Estágio de Execução (Roda o site pronto)
+# 2. Estágio de Execução
 FROM node:20-alpine
 WORKDIR /app
 
-# Agora o COPY não vai falhar, pois a pasta existirá (mesmo que vazia)
 COPY --from=build /app/public ./public
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/node_modules ./node_modules

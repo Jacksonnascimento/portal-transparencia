@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'portal-transparencia-web/**' # O robô só trabalha se houver mudança nesta pasta
+      - 'portal-transparencia-web/**'
 
 jobs:
   deploy:
@@ -33,10 +33,13 @@ jobs:
       - name: Build e Push
         uses: docker/build-push-action@v5
         with:
-          context: ./portal-transparencia-web # Aponta para a pasta correta do Retaguarda
+          context: ./portal-transparencia-web
           push: true
           platforms: linux/arm64
           tags: ghcr.io/jacksonnascimento/horizon-admin:latest
+          # INJETANDO A URL DA API AQUI TAMBÉM:
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://91.98.201.11:8080/api/v1
 
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -48,4 +51,4 @@ jobs:
             cd ~/horizon
             export DOCKER_IMAGE_ADMIN=ghcr.io/jacksonnascimento/horizon-admin:latest
             docker compose pull horizon-admin
-            docker compose up -d horizon-admin
+            docker compose up -d --force-recreate horizon-admin
