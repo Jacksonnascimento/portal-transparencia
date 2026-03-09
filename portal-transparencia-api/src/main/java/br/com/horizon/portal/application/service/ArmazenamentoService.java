@@ -18,8 +18,9 @@ import java.util.UUID;
 @Service
 public class ArmazenamentoService {
 
-    // Cria a pasta 'Anexos' na raiz do seu projeto automaticamente
-    private final Path rootLocation = Paths.get("Anexos");
+    // BLINDAGEM: Agora a pasta 'Anexos' é forçada a ser criada exatamente no diretório raiz do Java (/app no Docker),
+    // garantindo que o volume mapeado no docker-compose vai encontrá-la.
+    private final Path rootLocation = Paths.get(System.getProperty("user.dir"), "Anexos");
 
     public ArmazenamentoService() {
         try {

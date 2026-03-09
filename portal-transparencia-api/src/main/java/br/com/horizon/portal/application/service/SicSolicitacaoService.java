@@ -164,7 +164,6 @@ public class SicSolicitacaoService {
             }
         }
 
-        // CÁLCULO PNTP COM SEGURANÇA CONTRA NULL
         Double mediaBanco = pesquisaSatisfacaoRepository.findMediaPorModulo(ModuloAvaliado.SIC);
         Long totalAvaliacoes = pesquisaSatisfacaoRepository.countByModuloAvaliado(ModuloAvaliado.SIC);
         Long positivas = pesquisaSatisfacaoRepository.countAvaliacoesPositivas(ModuloAvaliado.SIC);
@@ -175,7 +174,6 @@ public class SicSolicitacaoService {
         
         double percentualAprovacao = (total > 0) ? ((double) pos / total) * 100.0 : 0.0;
 
-        // BUSCA DOS ÚLTIMOS 5 FEEDBACKS
         List<SicEstatisticasDTO.SicFeedbackDTO> feedbacks = pesquisaSatisfacaoRepository
                 .findTop5ByModuloAvaliadoOrderByDataAvaliacaoDesc(ModuloAvaliado.SIC)
                 .stream()
@@ -202,7 +200,7 @@ public class SicSolicitacaoService {
                 .notaMedia(notaMedia)
                 .totalAvaliacoes(total)
                 .percentualAprovacao(percentualAprovacao)
-                .ultimosFeedbacks(feedbacks) // Injetando a lista de feedbacks
+                .ultimosFeedbacks(feedbacks)
                 .build();
     }
 
@@ -263,6 +261,7 @@ public class SicSolicitacaoService {
             PdfWriter.getInstance(document, out);
             document.open();
 
+            // AJUSTE DE BLINDAGEM: Caminho do brasão agora é dinâmico para Windows e Linux (Hetzner)
             String caminhoFisicoBrasao = System.getProperty("user.dir") + File.separator + "Imagens" + File.separator + "brasao.png";
             File file = new File(caminhoFisicoBrasao);
 
@@ -273,7 +272,7 @@ public class SicSolicitacaoService {
                     brasao.setAlignment(Element.ALIGN_CENTER);
                     document.add(brasao);
                 } catch (Exception e) {
-                    log.error("Erro ao carregar imagem: {}", e.getMessage());
+                    log.error("Erro ao carregar imagem no PDF: {}", e.getMessage());
                 }
             }
 
@@ -317,7 +316,7 @@ public class SicSolicitacaoService {
             document.close();
 
         } catch (Exception e) {
-            log.error("Erro ao gerar PDF", e);
+            log.error("Erro fatal ao gerar PDF do e-SIC", e);
         }
 
         return out.toByteArray();
