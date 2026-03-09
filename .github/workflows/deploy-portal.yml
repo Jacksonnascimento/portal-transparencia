@@ -37,11 +37,10 @@ jobs:
           push: true
           platforms: linux/arm64
           tags: ghcr.io/jacksonnascimento/horizon-portal:latest
-          # INJETANDO A URL DA API AQUI:
           build-args: |
             NEXT_PUBLIC_API_URL=/api-proxy
-        cache-from: type=gha
-        cache-to: type=gha,mode=max    
+          cache-from: type=gha
+          cache-to: type=gha,mode=max    
 
       - name: Deploy na VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
