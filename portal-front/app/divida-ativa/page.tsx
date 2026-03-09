@@ -17,7 +17,6 @@ interface DividaAtiva {
   valorTotalDivida: number;
 }
 
-
 export default function DividaAtivaPage() {
   const [dividas, setDividas] = useState<DividaAtiva[]>([]);
   const [totalRegistros, setTotalRegistros] = useState(0);
