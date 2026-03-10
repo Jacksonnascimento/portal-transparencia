@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-// LISTA 100% SEGURA: Apenas os ícones que já sabemos que estão na sua versão!
+// LISTA 100% SEGURA: Ícones verificados da Lucide-React
 import { 
   TrendingUp, TrendingDown, Users, PlaneTakeoff, 
   FileSignature, ScrollText, Landmark, Info, 
   Search, ChevronRight, Home, Building2, Database, 
-  HelpCircle, BookOpen, Wrench, Briefcase, Shield, Clipboard, FileText
+  HelpCircle, BookOpen, Wrench, Briefcase, Shield, Clipboard, FileText, MessageSquare
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -66,22 +66,21 @@ export default function HomePage() {
           <MenuCard href="/obras" icon={<Wrench size={32} />} title="Obras Públicas" desc="Acompanhamento local" />
           <MenuCard href="/prestacao-contas" icon={<ScrollText size={32} />} title="Contas" desc="Relatórios RREO e RGF" />
           
-          {/* Voltando a usar o Briefcase para Convênios (como você tinha feito originalmente) */}
           <MenuCard href="/convenios" icon={<Briefcase size={32} />} title="Convênios" desc="Repasses e transferências" />
           <MenuCard href="/carta-servicos" icon={<Clipboard size={32} />} title="Serviços" desc="Catálogo de atendimento" />
           <MenuCard href="/conselhos" icon={<Shield size={32} />} title="Conselhos" desc="Atas e resoluções" />
           <MenuCard href="/sic" icon={<HelpCircle size={32} />} title="e-SIC" desc="Acesso à informação" />
 
-          {/* NOVOS CARDS (Usando apenas ícones que já sabemos que não dão erro) */}
+          {/* NOVOS CARDS + PERGUNTAS FREQUENTES */}
           <MenuCard href="/saude" icon={<Info size={32} />} title="Saúde" desc="Listas de espera e farmácia" />
           <MenuCard href="/educacao" icon={<BookOpen size={32} />} title="Educação" desc="Vagas em creches e escolas" />
           <MenuCard href="/emendas" icon={<Landmark size={32} />} title="Emendas" desc="Emendas parlamentares e PIX" />
-          <MenuCard href="/renuncias" icon={<TrendingDown size={32} />} title="Renúncias" desc="Desonerações e incentivos" />
+          <MenuCard href="/faq" icon={<MessageSquare size={32} />} title="FAQ" desc="Perguntas Frequentes" />
 
         </div>
       </section>
 
-      {/* 3. SEÇÃO INSTITUCIONAL E RADAR (Critérios 2.1-2.3 e 2.9 PNTP) */}
+      {/* 3. SEÇÃO INSTITUCIONAL E RADAR */}
       <section className="bg-slate-50 py-16 border-y border-slate-200">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
