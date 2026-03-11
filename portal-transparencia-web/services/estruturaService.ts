@@ -11,7 +11,7 @@ export interface EstruturaOrganizacional {
   telefoneContato: string;
   emailInstitucional: string;
   linkCurriculo: string;
-  urlFotoDirigente?: string; // NOVO: Mapeamento da Foto do Dirigente
+  urlFotoDirigente?: string; // NOVO: Campo para imagem
   criadoEm?: string;
   atualizadoEm?: string;
 }
@@ -24,7 +24,6 @@ export interface FiltrosEstrutura {
 }
 
 export const estruturaService = {
-  // Agora aceita filtros dinâmicos
   listarTodas: async (filtros?: FiltrosEstrutura) => {
     const response = await api.get('/estrutura-organizacional', { params: filtros });
     return response.data;
@@ -44,7 +43,6 @@ export const estruturaService = {
     await api.delete(`/estrutura-organizacional/${id}`);
   },
 
-  // Exportações chamando a rota pública otimizada em formato Blob
   exportarCsv: async (filtros?: FiltrosEstrutura) => {
     const response = await api.get('/portal/estrutura-organizacional/exportar/csv', { 
       params: filtros, 
@@ -53,7 +51,7 @@ export const estruturaService = {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'estrutura-organizacional.csv');
+    link.setAttribute('download', `Estrutura_Organizacional_${new Date().getTime()}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -64,10 +62,10 @@ export const estruturaService = {
       params: filtros, 
       responseType: 'blob' 
     });
-    const url = window.URL.createObjectURL(new Blob([response.data, { type: 'application/pdf' }]));
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'estrutura-organizacional.pdf');
+    link.setAttribute('download', `Estrutura_Organizacional_${new Date().getTime()}.pdf`);
     document.body.appendChild(link);
     link.click();
     link.remove();
