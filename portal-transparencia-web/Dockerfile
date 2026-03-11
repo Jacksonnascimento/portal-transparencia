@@ -1,5 +1,5 @@
 # 1. Estágio de Build
-FROM node:20-alpine AS build
+FROM node:20-slim AS build
 WORKDIR /app
 
 # Recebe a variável do GitHub Actions
@@ -15,7 +15,7 @@ RUN mkdir -p public
 RUN npm run build
 
 # 2. Estágio de Execução
-FROM node:20-alpine
+FROM node:20-slim
 WORKDIR /app
 
 COPY --from=build /app/public ./public
