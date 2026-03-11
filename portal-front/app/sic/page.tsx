@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   Home, ChevronRight, MapPin, Clock, Phone, Mail, 
   Send, ShieldCheck, FileText, MessageSquare, Star, Search, CheckCircle, BarChart3, Paperclip, Download
 } from 'lucide-react';
-import axios from 'axios'; // Importação do axios puro para evitar o envio de tokens expirados
+import axios from 'axios';
 import { sicService, SicSolicitacaoRequestDTO, SicSolicitacaoResponseDTO } from '../../services/sicService';
 import { satisfacaoService } from '../../services/satisfacaoService';
 import api from '../../services/api';
@@ -38,15 +38,25 @@ export default function SicOuvidoriaPage() {
   const [enviandoSatisfacao, setEnviandoSatisfacao] = useState(false);
   const [satisfacaoEnviada, setSatisfacaoEnviada] = useState(false);
 
-  // Captura a URL base dinamicamente para usar tanto no UPLOAD quanto no DOWNLOAD
+  // Estado que armazena as configurações do Portal (Endereço, Telefone, etc)
+  const [config, setConfig] = useState<any>(null);
+
   const baseUrl = api.defaults.baseURL || 'http://localhost:8080/api/v1';
 
-  // Função para garantir que a URL de download bata no @GetMapping do Controller
+  // Busca os dados da prefeitura na inicialização da página
+  useEffect(() => {
+    api.get('/portal/configuracoes')
+      .then(res => setConfig(res.data))
+      .catch(err => console.error("Erro ao carregar configurações do portal", err));
+  }, []);
+
+  // TRAVA DE SEGURANÇA: Limpa pastas e envia apenas o nome do arquivo para o Spring Boot
   const gerarUrlArquivo = (caminhoOuNome: string) => {
+    if (!caminhoOuNome) return '#';
     const urlLimpa = caminhoOuNome.trim();
     if (urlLimpa.startsWith('http')) return urlLimpa;
-    // Aponta para a rota GET /api/v1/portal/arquivos/{nomeArquivo}
-    return `${baseUrl}/portal/arquivos/${urlLimpa}`;
+    const nomeArquivo = urlLimpa.split(/[/\\]/).pop();
+    return `${baseUrl}/portal/arquivos/${nomeArquivo}`;
   };
 
   const handleDocumentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,16 +74,12 @@ export default function SicOuvidoriaPage() {
       const uploadPromises = files.map(async (file) => {
         const formDataFile = new FormData();
         formDataFile.append('file', file);
-        
-        // Utiliza o AXIOS PURO para ignorar o interceptor do frontend (evita o Erro 403)
-        // Batendo na rota @PostMapping("/upload")
+        // Utiliza axios puro para ignorar interceptors que possam causar erro 403
         const response = await axios.post(`${baseUrl}/portal/arquivos/upload`, formDataFile);
-        
         return response.data.url;
       });
 
       const novasUrls = await Promise.all(uploadPromises);
-      
       const urlsExistentes = formData.urlAnexoSolicitacao ? formData.urlAnexoSolicitacao.split(',') : [];
       const todasUrls = [...urlsExistentes, ...novasUrls].filter(Boolean).join(',');
 
@@ -84,7 +90,7 @@ export default function SicOuvidoriaPage() {
       toast.error('Erro ao enviar o(s) arquivo(s). Verifique o tamanho do documento.', { id: toastId });
     } finally {
       setFazendoUpload(false);
-      e.target.value = ''; // Limpa o input
+      e.target.value = '';
     }
   };
 
@@ -140,7 +146,6 @@ export default function SicOuvidoriaPage() {
       const payloadSatisfacao = {
         nota: satisfacao.nota,
         comentario: satisfacao.comentario,
-        // CORRIGIDO AQUI: Alterado de 'ESIC' para 'SIC' para alinhar com o Backend
         moduloAvaliado: 'SIC' as 'SIC'
       };
 
@@ -194,10 +199,27 @@ export default function SicOuvidoriaPage() {
               <MapPin className="text-[var(--cor-primaria)]" size={24} /> Atendimento Presencial
             </h2>
             <div className="space-y-6">
-              <InfoRow icon={<MapPin size={18} />} label="Endereço do SIC Físico" value="Praça da Matriz, 01 - Centro Administrativo. Térreo, Sala 02." />
-              <InfoRow icon={<Clock size={18} />} label="Horário de Atendimento" value="Segunda a Sexta-feira, das 08:00h às 14:00h." />
-              <InfoRow icon={<Phone size={18} />} label="Telefones de Contato" value="(00) 3000-0000 / 0800 000 0000" />
-              <InfoRow icon={<Mail size={18} />} label="E-mail Institucional" value="ouvidoria@horizon.com.br" />
+              {/* Prioriza dados específicos do SIC, caso vazios, pega os da Ouvidoria/Prefeitura */}
+              <InfoRow 
+                icon={<MapPin size={18} />} 
+                label="Endereço do SIC Físico" 
+                value={config?.enderecoSic || config?.endereco || "Endereço não configurado no sistema."} 
+              />
+              <InfoRow 
+                icon={<Clock size={18} />} 
+                label="Horário de Atendimento" 
+                value={config?.horarioAtendimentoSic || config?.horarioAtendimento || "Horário de atendimento não configurado."} 
+              />
+              <InfoRow 
+                icon={<Phone size={18} />} 
+                label="Telefones de Contato" 
+                value={config?.telefoneSic || config?.telefoneOuvidoria || config?.telefone || "Telefone não informado."} 
+              />
+              <InfoRow 
+                icon={<Mail size={18} />} 
+                label="E-mail Institucional" 
+                value={config?.emailSic || config?.emailOuvidoria || config?.emailEntidade || "E-mail não informado."} 
+              />
             </div>
           </div>
 
