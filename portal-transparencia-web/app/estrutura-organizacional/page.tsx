@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, ChangeEvent } from 'react';
 import { createPortal } from 'react-dom'; 
+import api from '@/services/api'; // NOVO: Import do axios para upload
 import { estruturaService, EstruturaOrganizacional, FiltrosEstrutura } from '@/services/estruturaService';
 import { Sidebar } from '@/components/Sidebar'; 
 import { 
   Filter, AlertCircle, X, Eye, Plus, Edit, Trash2, 
   Save, Building2, User, MapPin, Clock, Phone, Mail, Link as LinkIcon,
-  Download, FileText, CheckCircle, Search
+  Download, FileText, CheckCircle, Search, Camera, Loader2
 } from 'lucide-react';
 
 const ModalPortal = ({ children }: { children: React.ReactNode }) => {
@@ -19,12 +20,28 @@ const ModalPortal = ({ children }: { children: React.ReactNode }) => {
   return createPortal(children, modalRoot);
 };
 
+// NOVO: Utilitário global para exibir a imagem vinda da API
+const getDownloadUrl = (path?: string) => {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+  const cleanApiUrl = apiUrl.replace(/\/api\/v1\/?$/, "");
+  let caminhoCorrigido = path;
+  if (caminhoCorrigido.startsWith("/api/v1/arquivos/")) {
+    caminhoCorrigido = caminhoCorrigido.replace("/api/v1/arquivos/", "/api/v1/portal/arquivos/");
+  }
+  return `${cleanApiUrl}${caminhoCorrigido}`;
+};
+
 export default function EstruturaOrganizacionalPage() {
   const [estruturas, setEstruturas] = useState<EstruturaOrganizacional[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // NOVO: Controle de estado do Upload da Imagem
+  const [fazendoUpload, setFazendoUpload] = useState(false);
 
   // Modais
   const [selectedOrgao, setSelectedOrgao] = useState<EstruturaOrganizacional | null>(null);
@@ -40,7 +57,7 @@ export default function EstruturaOrganizacionalPage() {
   const [formData, setFormData] = useState<EstruturaOrganizacional>({
     nomeOrgao: "", sigla: "", nomeDirigente: "", cargoDirigente: "",
     horarioAtendimento: "", enderecoCompleto: "", telefoneContato: "",
-    emailInstitucional: "", linkCurriculo: ""
+    emailInstitucional: "", linkCurriculo: "", urlFotoDirigente: "" // ADDED
   });
 
   const fetchEstruturas = useCallback(async () => {
@@ -57,6 +74,26 @@ export default function EstruturaOrganizacionalPage() {
   }, [filtros]);
 
   useEffect(() => { fetchEstruturas(); }, [fetchEstruturas]);
+
+  // NOVO: Handler de Upload da Foto via Endpoint Genérico
+  const handleFotoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const dataForm = new FormData();
+    dataForm.append("file", file);
+    setFazendoUpload(true);
+    try {
+      const { data } = await api.post('/portal/arquivos/upload', dataForm, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setFormData(prev => ({ ...prev, urlFotoDirigente: data.url }));
+    } catch (err) {
+      setError("Erro ao enviar a foto. Verifique a conexão.");
+    } finally {
+      setFazendoUpload(false);
+      e.target.value = '';
+    }
+  };
 
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +115,7 @@ export default function EstruturaOrganizacionalPage() {
 
   const handleExcluir = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("Tem certeza que deseja excluir este registro? A ação será auditada.")) {
+    if (confirm("Tem certeza que deseja excluir este registro? A ação será auditada e a foto removida do servidor.")) {
       try {
         await estruturaService.excluir(id);
         fetchEstruturas();
@@ -97,7 +134,7 @@ export default function EstruturaOrganizacionalPage() {
       setFormData({ 
         nomeOrgao: "", sigla: "", nomeDirigente: "", cargoDirigente: "", 
         horarioAtendimento: "", enderecoCompleto: "", telefoneContato: "", 
-        emailInstitucional: "", linkCurriculo: "" 
+        emailInstitucional: "", linkCurriculo: "", urlFotoDirigente: "" 
       });
       setModalMode('create');
     }
@@ -108,7 +145,6 @@ export default function EstruturaOrganizacionalPage() {
     setFiltros({ nomeOrgao: '', sigla: '', nomeDirigente: '', cargoDirigente: '' });
   };
 
-  // --- EXPORTAÇÃO CSV (NO FRONTEND - PADRÃO RECEITAS) ---
   const handleExportCSV = () => {
     if (!estruturas || estruturas.length === 0) {
       alert("Não há dados na tabela para exportar.");
@@ -161,8 +197,6 @@ export default function EstruturaOrganizacionalPage() {
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Horizon AJ • Gestão de Transparência</p>
           </div>
           <div className="flex gap-2">
-            
-            {/* Botões Exportação no Padrão Receitas (com fundo branco e ícone escuro para alta visibilidade) */}
             <button 
               onClick={handleExportCSV}
               className="flex items-center px-4 py-2 border border-slate-200 rounded-xl shadow-sm font-bold text-xs uppercase bg-white text-slate-700 hover:text-black hover:bg-slate-50 transition-all"
@@ -200,7 +234,6 @@ export default function EstruturaOrganizacionalPage() {
           </div>
         )}
 
-        {/* --- FILTROS --- */}
         {showFilters && (
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6 animate-in fade-in slide-in-from-top-2 space-y-6">
             <div>
@@ -262,7 +295,17 @@ export default function EstruturaOrganizacionalPage() {
                     <td className="px-6 py-4 font-bold text-slate-700">
                       {item.nomeOrgao} {item.sigla && <span className="text-slate-400 font-normal ml-1">({item.sigla})</span>}
                     </td>
-                    <td className="px-6 py-4 text-slate-600 font-semibold">{item.nomeDirigente}</td>
+                    <td className="px-6 py-4 flex items-center gap-3">
+                      {/* NOVO: Avatar do Dirigente na Tabela */}
+                      {item.urlFotoDirigente ? (
+                        <img src={getDownloadUrl(item.urlFotoDirigente)} alt={item.nomeDirigente} className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-sm shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+                          <User size={14} />
+                        </div>
+                      )}
+                      <span className="text-slate-600 font-semibold">{item.nomeDirigente}</span>
+                    </td>
                     <td className="px-6 py-4 text-slate-500">{item.cargoDirigente}</td>
                     <td className="px-6 py-4 text-slate-500">{item.telefoneContato || '-'}</td>
                     <td className="px-6 py-4 text-center">
@@ -280,7 +323,7 @@ export default function EstruturaOrganizacionalPage() {
         </div>
       </main>
 
-      {/* --- MODAL DETALHES (PADRÃO RECEITAS) --- */}
+      {/* --- MODAL DETALHES --- */}
       {selectedOrgao && (
         <ModalPortal>
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -301,11 +344,21 @@ export default function EstruturaOrganizacionalPage() {
               
               <div className="p-8 overflow-y-auto space-y-8 bg-white text-slate-700">
                 
-                <div className="flex items-center gap-4 p-5 bg-blue-50/50 border border-blue-100 rounded-xl">
-                  <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                    <User size={24} />
+                <div className="flex items-center gap-4 p-5 bg-blue-50/50 border border-blue-100 rounded-xl relative overflow-hidden">
+                  <div className="absolute right-0 top-0 opacity-5 pointer-events-none">
+                    <Building2 size={150} className="-mr-10 -mt-10" />
                   </div>
-                  <div>
+                  
+                  {/* NOVO: Foto do dirigente no banner de detalhes */}
+                  {selectedOrgao.urlFotoDirigente ? (
+                    <img src={getDownloadUrl(selectedOrgao.urlFotoDirigente)} alt={selectedOrgao.nomeDirigente} className="h-16 w-16 rounded-full object-cover border-4 border-white shadow-md z-10" />
+                  ) : (
+                    <div className="h-14 w-14 rounded-full bg-blue-100 border-4 border-white shadow-sm text-blue-600 flex items-center justify-center z-10">
+                      <User size={24} />
+                    </div>
+                  )}
+                  
+                  <div className="z-10">
                     <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mb-1">Dirigente Responsável</span>
                     <h4 className="text-lg font-black text-slate-800 leading-none">{selectedOrgao.nomeDirigente}</h4>
                     <p className="text-sm text-slate-500 font-medium mt-1">{selectedOrgao.cargoDirigente}</p>
@@ -351,7 +404,7 @@ export default function EstruturaOrganizacionalPage() {
         </ModalPortal>
       )}
 
-      {/* --- MODAL FORMULÁRIO (PADRÃO RECEITAS) --- */}
+      {/* --- MODAL FORMULÁRIO --- */}
       {isFormOpen && (
         <ModalPortal>
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -368,6 +421,40 @@ export default function EstruturaOrganizacionalPage() {
               <form onSubmit={handleSalvar} className="flex flex-col flex-1 overflow-hidden">
                 <div className="p-8 overflow-y-auto space-y-6">
                   
+                  {/* NOVO: Bloco de Upload da Foto Institucional */}
+                  <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex items-center gap-6">
+                     <div className="relative shrink-0">
+                       {formData.urlFotoDirigente ? (
+                          <img src={getDownloadUrl(formData.urlFotoDirigente)} alt="Pré-visualização" className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm" />
+                       ) : (
+                          <div className="w-20 h-20 rounded-full bg-slate-200 border-4 border-white shadow-sm flex items-center justify-center text-slate-400">
+                             <User size={32} />
+                          </div>
+                       )}
+                       {fazendoUpload && (
+                         <div className="absolute inset-0 bg-white/70 rounded-full flex items-center justify-center">
+                           <Loader2 size={24} className="animate-spin text-black" />
+                         </div>
+                       )}
+                     </div>
+                     <div className="flex-1">
+                        <label className="text-xs font-bold text-slate-800 block mb-1">Foto Institucional do Dirigente</label>
+                        <p className="text-[10px] text-slate-500 font-medium mb-3">Recomendado: Rosto frontal, fundo neutro, resolução 1:1 (quadrada).</p>
+                        
+                        <div className="flex items-center gap-3">
+                          <label className={`flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold cursor-pointer transition-all ${fazendoUpload ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <Camera size={14} /> {fazendoUpload ? "Enviando..." : "Escolher Foto"}
+                            <input type="file" className="hidden" accept="image/*" onChange={handleFotoUpload} />
+                          </label>
+                          {formData.urlFotoDirigente && (
+                            <button type="button" onClick={() => setFormData(p => ({...p, urlFotoDirigente: ""}))} className="text-[10px] font-bold text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors">
+                              Remover Foto
+                            </button>
+                          )}
+                        </div>
+                     </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-6">
                     <div className="col-span-2 md:col-span-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Nome do Órgão / Secretaria *</label>
@@ -430,7 +517,7 @@ export default function EstruturaOrganizacionalPage() {
 
                 <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 flex-shrink-0">
                   <button type="button" onClick={() => setIsFormOpen(false)} className="px-6 py-2.5 text-[10px] font-black uppercase text-slate-500 hover:bg-slate-100 rounded-xl transition-all">Cancelar</button>
-                  <button type="submit" disabled={saving} className="flex items-center px-8 py-2.5 bg-black text-white text-[10px] font-black uppercase rounded-xl shadow-xl hover:bg-slate-800 transition-all disabled:opacity-50">
+                  <button type="submit" disabled={saving || fazendoUpload} className="flex items-center px-8 py-2.5 bg-black text-white text-[10px] font-black uppercase rounded-xl shadow-xl hover:bg-slate-800 transition-all disabled:opacity-50">
                     {saving ? 'Salvando...' : 'Salvar Dados'}
                   </button>
                 </div>

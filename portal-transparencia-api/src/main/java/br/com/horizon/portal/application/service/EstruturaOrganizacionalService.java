@@ -37,6 +37,9 @@ public class EstruturaOrganizacionalService {
     private final ConfiguracaoRepository configuracaoRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
+    
+    // NOVO: Serviço de armazenamento injetado para controlar o ciclo de vida dos arquivos físicos
+    private final ArmazenamentoService armazenamentoService;
 
     private static final String ENTIDADE_NOME = "ESTRUTURA_ORGANIZACIONAL";
 
@@ -69,6 +72,11 @@ public class EstruturaOrganizacionalService {
                 new TypeReference<Map<String, Object>>() {
                 });
 
+        // REGRA DE SAÚDE DO SERVIDOR: Verifica se a foto mudou ou foi removida. Se sim, apaga a antiga fisicamente.
+        if (existente.getUrlFotoDirigente() != null && !existente.getUrlFotoDirigente().equals(dto.getUrlFotoDirigente())) {
+            armazenamentoService.apagar(existente.getUrlFotoDirigente());
+        }
+
         existente.setNomeOrgao(dto.getNomeOrgao());
         existente.setSigla(dto.getSigla());
         existente.setNomeDirigente(dto.getNomeDirigente());
@@ -78,6 +86,10 @@ public class EstruturaOrganizacionalService {
         existente.setTelefoneContato(dto.getTelefoneContato());
         existente.setEmailInstitucional(dto.getEmailInstitucional());
         existente.setLinkCurriculo(dto.getLinkCurriculo());
+        
+        // Atualiza a URL da foto com a nova (que pode ser null caso o usuário tenha clicado em "Remover Foto")
+        existente.setUrlFotoDirigente(dto.getUrlFotoDirigente());
+        
         existente.setAtualizadoPor(usuarioLogado);
         existente.setAtualizadoEm(LocalDateTime.now());
 
@@ -93,6 +105,12 @@ public class EstruturaOrganizacionalService {
         Map<String, Object> estadoAnterior = objectMapper.convertValue(entity,
                 new TypeReference<Map<String, Object>>() {
                 });
+                
+        // REGRA DE SAÚDE DO SERVIDOR: Ao deletar o órgão, limpa o arquivo físico da foto no disco
+        if (entity.getUrlFotoDirigente() != null) {
+            armazenamentoService.apagar(entity.getUrlFotoDirigente());
+        }
+        
         repository.delete(entity);
         dispararAuditoria("EXCLUSAO", id.toString(), estadoAnterior, null);
     }
@@ -248,7 +266,9 @@ public class EstruturaOrganizacionalService {
                 .nomeDirigente(entity.getNomeDirigente()).cargoDirigente(entity.getCargoDirigente())
                 .horarioAtendimento(entity.getHorarioAtendimento()).enderecoCompleto(entity.getEnderecoCompleto())
                 .telefoneContato(entity.getTelefoneContato()).emailInstitucional(entity.getEmailInstitucional())
-                .linkCurriculo(entity.getLinkCurriculo()).criadoEm(entity.getCriadoEm())
+                .linkCurriculo(entity.getLinkCurriculo())
+                .urlFotoDirigente(entity.getUrlFotoDirigente()) // NOVO
+                .criadoEm(entity.getCriadoEm())
                 .atualizadoEm(entity.getAtualizadoEm())
                 .build();
     }
@@ -259,6 +279,7 @@ public class EstruturaOrganizacionalService {
                 .cargoDirigente(dto.getCargoDirigente()).horarioAtendimento(dto.getHorarioAtendimento())
                 .enderecoCompleto(dto.getEnderecoCompleto()).telefoneContato(dto.getTelefoneContato())
                 .emailInstitucional(dto.getEmailInstitucional()).linkCurriculo(dto.getLinkCurriculo())
+                .urlFotoDirigente(dto.getUrlFotoDirigente()) // NOVO
                 .build();
     }
 }

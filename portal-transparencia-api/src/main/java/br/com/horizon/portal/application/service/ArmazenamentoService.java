@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,9 +19,8 @@ import java.util.UUID;
 @Service
 public class ArmazenamentoService {
 
-    // BLINDAGEM: Agora a pasta 'Anexos' é forçada a ser criada exatamente no diretório raiz do Java (/app no Docker),
-    // garantindo que o volume mapeado no docker-compose vai encontrá-la.
-    private final Path rootLocation = Paths.get(System.getProperty("user.dir"), "Anexos");
+    // BLINDAGEM: Garante que o caminho base seja absoluto para evitar erros de deleção
+    private final Path rootLocation = Paths.get(System.getProperty("user.dir"), "Anexos").toAbsolutePath().normalize();
 
     public ArmazenamentoService() {
         try {
@@ -38,27 +38,22 @@ public class ArmazenamentoService {
             
             String nomeOriginal = StringUtils.cleanPath(file.getOriginalFilename());
             
-            // Trava de segurança contra navegação de diretório maliciosa
             if (nomeOriginal.contains("..")) {
                 throw new RuntimeException("Caminho de arquivo inválido: " + nomeOriginal);
             }
 
-            // Extrai a extensão do arquivo (ex: .pdf, .png)
             String extensao = "";
             int i = nomeOriginal.lastIndexOf('.');
             if (i > 0) {
                 extensao = nomeOriginal.substring(i);
             }
 
-            // Gera um nome único (Ex: 550e8400-e29b-41d4-a716-446655440000.pdf)
             String novoNome = UUID.randomUUID().toString() + extensao;
-            Path destinationFile = this.rootLocation.resolve(Paths.get(novoNome)).normalize().toAbsolutePath();
+            Path destinationFile = this.rootLocation.resolve(novoNome).normalize().toAbsolutePath();
 
-            // Salva o arquivo no disco
             Files.copy(file.getInputStream(), destinationFile, StandardCopyOption.REPLACE_EXISTING);
-            log.info("Arquivo salvo com sucesso: {}", destinationFile);
+            log.info("✅ Arquivo salvo com sucesso fisicamente: {}", destinationFile);
 
-            // Retorna a ROTA da API que o front-end vai usar para ler esse arquivo depois
             return "/api/v1/portal/arquivos/" + novoNome;
             
         } catch (IOException e) {
@@ -77,6 +72,47 @@ public class ArmazenamentoService {
             }
         } catch (Exception e) {
             throw new RuntimeException("Não foi possível ler o arquivo: " + nomeArquivo, e);
+        }
+    }
+
+    // LIXEIRA AUTOMÁTICA TURBINADA
+    public void apagar(String rotaOuNome) {
+        if (rotaOuNome == null || rotaOuNome.trim().isEmpty()) {
+            return;
+        }
+        try {
+            // 1. Garante a extração apenas do nome do arquivo da URL (ignora rotas e parâmetros)
+            String nomeArquivo = rotaOuNome;
+            if (rotaOuNome.contains("/")) {
+                nomeArquivo = rotaOuNome.substring(rotaOuNome.lastIndexOf('/') + 1);
+            }
+            if (nomeArquivo.contains("?")) {
+                nomeArquivo = nomeArquivo.substring(0, nomeArquivo.indexOf('?'));
+            }
+            nomeArquivo = nomeArquivo.trim();
+
+            if (nomeArquivo.isEmpty()) {
+                return;
+            }
+
+            // 2. Resolve o caminho físico exato no SO
+            Path file = this.rootLocation.resolve(nomeArquivo).normalize().toAbsolutePath();
+            File arquivoFisico = file.toFile();
+
+            // 3. Tenta deletar fisicamente informando o resultado
+            if (arquivoFisico.exists()) {
+                boolean deletado = arquivoFisico.delete(); // Método raiz e direto do SO
+                if (deletado) {
+                    log.info("🗑️ LIXEIRA AUTOMÁTICA: Arquivo antigo limpo do disco: {}", file);
+                } else {
+                    log.warn("⚠️ LIXEIRA AUTOMÁTICA: O SO impediu a deleção (Arquivo em uso?): {}", file);
+                }
+            } else {
+                log.info("⚠️ LIXEIRA AUTOMÁTICA: O arquivo já não existia no disco: {}", file);
+            }
+            
+        } catch (Exception e) {
+            log.error("❌ LIXEIRA AUTOMÁTICA: Falha crítica ao tentar deletar o arquivo da URL: {}", rotaOuNome, e);
         }
     }
 }

@@ -47,6 +47,10 @@ public class EstruturaOrganizacionalEntity {
     @Column(name = "link_curriculo", columnDefinition = "TEXT")
     private String linkCurriculo; // A bala de prata para o TCE
 
+    // NOVO: Campo para armazenar a URL ou path da Foto Institucional do Dirigente
+    @Column(name = "url_foto_dirigente", columnDefinition = "TEXT")
+    private String urlFotoDirigente;
+
     @Column(name = "criado_em", updatable = false)
     private LocalDateTime criadoEm;
 

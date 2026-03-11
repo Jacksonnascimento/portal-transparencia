@@ -24,6 +24,10 @@ public class EstruturaOrganizacionalDTO {
     private String telefoneContato;
     private String emailInstitucional;
     private String linkCurriculo;
+    
+    // NOVO: Campo para trafegar a URL da Foto Institucional do Dirigente
+    private String urlFotoDirigente;
+    
     private LocalDateTime criadoEm;
     private LocalDateTime atualizadoEm;
 }

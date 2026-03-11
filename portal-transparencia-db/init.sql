@@ -350,8 +350,10 @@ CREATE TABLE IF NOT EXISTS estrutura_organizacional (
     criado_em TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     atualizado_em TIMESTAMP WITHOUT TIME ZONE,
     criado_por VARCHAR(255),
-    atualizado_por VARCHAR(255)
+    atualizado_por VARCHAR(255),
+	url_foto_dirigente TEXT;
 );
 
 -- Criar índices para otimizar as buscas no portal público
 CREATE INDEX IF NOT EXISTS idx_estrutura_nome_orgao ON estrutura_organizacional(nome_orgao);
+COMMENT ON COLUMN estrutura_organizacional.url_foto_dirigente IS 'Armazena a URL ou path da foto institucional do dirigente (Bala de Prata UX/TCE)';

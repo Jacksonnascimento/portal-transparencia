@@ -11,6 +11,7 @@ export interface EstruturaOrganizacional {
   telefoneContato: string;
   emailInstitucional: string;
   linkCurriculo: string;
+  urlFotoDirigente?: string; // NOVO: Mapeamento da Foto do Dirigente
   criadoEm?: string;
   atualizadoEm?: string;
 }
