@@ -212,13 +212,14 @@ export function Sidebar() {
                     onClick={() => toggleCategory(category.title)}
                     className="w-full flex items-center justify-between px-4 py-2 rounded-lg hover:bg-slate-800/30 transition-colors group"
                   >
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-slate-400 transition-colors">
+                    {/* AQUI FOI ALTERADO O TAMANHO E O CONTRASTE DO TÍTULO DA CATEGORIA */}
+                    <span className="text-xs font-black text-slate-400 uppercase tracking-wider group-hover:text-slate-300 transition-colors">
                       {category.title}
                     </span>
                     {isOpen ? (
-                      <ChevronDown size={14} className="text-slate-500 group-hover:text-slate-400" />
+                      <ChevronDown size={16} className="text-slate-400 group-hover:text-slate-300" />
                     ) : (
-                      <ChevronRight size={14} className="text-slate-500 group-hover:text-slate-400" />
+                      <ChevronRight size={16} className="text-slate-400 group-hover:text-slate-300" />
                     )}
                   </button>
 
