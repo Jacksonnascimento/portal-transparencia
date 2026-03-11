@@ -24,6 +24,7 @@ interface SicSolicitacao {
   mensagem: string;
   urlAnexoSolicitacao?: string;
   urlAnexoResposta?: string;
+  sigilo: boolean; // ADICIONADO: Flag de sigilo para resguardar o solicitante
   status: string;
   dataSolicitacao: string;
   respostaOficial?: string;
@@ -317,8 +318,15 @@ export default function GestaoEsicPage() {
                     <tr key={req.id} onClick={() => abrirModal(req)} className={`hover:bg-slate-50 transition-colors cursor-pointer ${req.expirado ? 'bg-red-50/50' : req.emAlerta ? 'bg-amber-50/50' : ''}`}>
                       <td className="px-6 py-4 font-bold text-slate-900">{req.protocolo}</td>
                       <td className="px-6 py-4">
-                        <p className="font-bold text-slate-900">{req.nome}</p>
-                        <p className="text-[10px] text-slate-500 font-semibold uppercase">{req.tipoSolicitacao}</p>
+                        {/* REGRA APLICADA NA TABELA: Protege nome se sigilo for verdadeiro */}
+                        <p className="font-bold text-slate-900">
+                          {req.sigilo ? (
+                            <span className="flex items-center gap-1.5 text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md w-fit">
+                              <Lock size={12} /> Dados em Sigilo
+                            </span>
+                          ) : req.nome}
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-semibold uppercase mt-1">{req.tipoSolicitacao}</p>
                       </td>
                       <td className="px-6 py-4">
                         {req.status === 'RESPONDIDO' || req.status === 'NEGADO' ? (
@@ -358,7 +366,7 @@ export default function GestaoEsicPage() {
           )}
         </div>
 
-        {/* MODAL DE TRAMITAÇÃO (IGUAL AO ANTERIOR, MAS COM OS ANEXOS MÚLTIPLOS) */}
+        {/* MODAL DE TRAMITAÇÃO */}
         {modalOpen && selectedRequest && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
             <div className="bg-[#F8FAFC] w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
@@ -397,8 +405,23 @@ export default function GestaoEsicPage() {
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   <div className="bg-white p-5 rounded-xl border border-slate-200">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Dados do Solicitante</span>
-                    <p className="font-bold text-slate-900">{selectedRequest.nome}</p>
-                    <p className="text-sm text-slate-600 mt-1">{selectedRequest.email}</p>
+                    {/* REGRA APLICADA NO MODAL: Ocultar dados pessoais caso optado por sigilo */}
+                    {selectedRequest.sigilo ? (
+                      <div className="flex items-start gap-3 mt-3 text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                        <Lock size={16} className="mt-0.5" />
+                        <div>
+                          <p className="font-bold text-sm text-amber-800">Identidade em Sigilo</p>
+                          <p className="text-[10px] text-amber-700 mt-1 font-semibold leading-tight">
+                            A LAI resguarda os dados pessoais deste requerente. Responda tecnicamente sem citar nomes.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="font-bold text-slate-900">{selectedRequest.nome}</p>
+                        <p className="text-sm text-slate-600 mt-1">{selectedRequest.email}</p>
+                      </>
+                    )}
                   </div>
                   <div className="bg-white p-5 rounded-xl border border-slate-200">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Classificação</span>

@@ -32,6 +32,9 @@ public class SicSolicitacaoResponseDTO {
     private String urlAnexoSolicitacao; 
     private String urlAnexoResposta;    
     
+    // NOVO: Flag de sigilo para o Frontend interpretar e mascarar os dados
+    private boolean sigilo; 
+    
     // CAMPOS DE INTELIGÊNCIA DE PRAZO
     private long diasRestantes;
     private boolean emAlerta;
@@ -81,6 +84,8 @@ public class SicSolicitacaoResponseDTO {
                 .dataResposta(entity.getDataResposta())
                 .urlAnexoSolicitacao(entity.getUrlAnexoSolicitacao())
                 .urlAnexoResposta(entity.getUrlAnexoResposta())
+                // Capturando o booleano de forma segura (previne NullPointerException se o campo estiver nulo na base legada)
+                .sigilo(Boolean.TRUE.equals(entity.getSigilo())) 
                 .diasRestantes(!concluido ? restantes : 0)
                 .emAlerta(!concluido && restantes <= 3 && restantes >= 0)
                 .expirado(!concluido && restantes < 0)
