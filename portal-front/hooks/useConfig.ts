@@ -11,8 +11,8 @@ export function useConfig() {
       const data = await configService.getPortalConfigs();
       if (data) {
         setConfig(data);
-        // Adicionamos um timestamp para evitar que o navegador use o brasão antigo em cache
-        setLogoUrl(`${configService.getBrasaoUrl()}?t=${new Date().getTime()}`);
+        // CORRIGIDO: Passa a urlBrasao recebida do banco para o formatador
+        setLogoUrl(`${configService.getBrasaoUrl(data.urlBrasao)}?t=${new Date().getTime()}`);
       }
     }
     load();

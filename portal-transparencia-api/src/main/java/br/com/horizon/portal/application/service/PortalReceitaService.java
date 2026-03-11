@@ -19,12 +19,12 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.Color;
-import java.io.File;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -35,10 +35,14 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class PortalReceitaService { // <--- O NOME AQUI FOI CORRIGIDO
+public class PortalReceitaService {
 
     private final ReceitaRepository receitaRepository;
     private final ConfiguracaoRepository configuracaoRepository;
+    
+    // NOVO: Serviço de Armazenamento para buscar a imagem na pasta segura
+    private final ArmazenamentoService armazenamentoService;
+    
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public Specification<ReceitaEntity> criarSpecificationReceita(
@@ -129,22 +133,27 @@ public class PortalReceitaService { // <--- O NOME AQUI FOI CORRIGIDO
         logoCell.setBorder(com.lowagie.text.Rectangle.NO_BORDER);
         logoCell.setHorizontalAlignment(Element.ALIGN_CENTER);
 
-        try {
-            String path = System.getProperty("user.dir") + File.separator + "Imagens";
-            File folder = new File(path);
+        // NOVA LÓGICA DO BRASÃO: Dinâmica, baseada no Banco de Dados e isolada no ArmazenamentoService
+        if (config != null && config.getUrlBrasao() != null && config.getUrlBrasao().contains("/api/v1/portal/arquivos/")) {
+            try {
+                String urlRelativa = config.getUrlBrasao().replace("/api/v1/portal/arquivos/", "");
+                String[] partes = urlRelativa.split("/");
+                
+                Resource resource = null;
+                if (partes.length == 2) {
+                    resource = armazenamentoService.carregar(partes[0], partes[1]);
+                } else if (partes.length == 1) {
+                    resource = armazenamentoService.carregar("geral", partes[0]); // fallback de segurança
+                }
 
-            if (folder.exists()) {
-                File[] files = folder.listFiles((dir, name) -> name.startsWith("brasao"));
-                if (files != null && files.length > 0) {
-                    Image brasao = Image.getInstance(files[0].getAbsolutePath());
+                if (resource != null && resource.exists()) {
+                    Image brasao = Image.getInstance(resource.getFile().getAbsolutePath());
                     brasao.scaleToFit(50, 50);
                     logoCell.addElement(brasao);
-                } else {
-                    log.warn("Arquivo de brasão não encontrado no diretório. PDF gerado sem logo.");
                 }
+            } catch (Exception e) {
+                log.warn("Falha ao carregar a imagem do brasão dinamicamente para o PDF de Receitas.", e);
             }
-        } catch (Exception e) {
-            log.warn("Falha ao carregar a imagem do brasão dinamicamente. Gerando sem logo.", e);
         }
 
         headerTable.addCell(logoCell);

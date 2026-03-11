@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import api from '../services/api';
+// IMPORTANTE: Adicionado a importação do configService
+import { configService } from '../services/configService';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -16,8 +18,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [config, setConfig] = useState<any>(null);
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
   const [showCookies, setShowCookies] = useState(false);
-
-  const brasaoUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/portal/configuracoes/brasao`;
 
   // ESTADOS DO MENU DE ACESSIBILIDADE
   const [isA11yOpen, setIsA11yOpen] = useState(false);
@@ -120,7 +120,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="max-w-7xl mx-auto px-4 h-24 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-4 group">
                   <div className="h-16 w-16 flex items-center justify-center p-1 bg-slate-50 rounded-2xl border border-slate-100 hover:border-[var(--cor-primaria)] transition-all">
-                    <img src={`${brasaoUrl}?t=${new Date().getTime()}`} alt="Brasão" className="max-h-full w-auto object-contain" onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/150?text=Logo")}/>
+                    {/* CORRIGIDO: Agora usa a URL dinâmica vinda do banco */}
+                    <img 
+                      src={`${configService.getBrasaoUrl(config?.urlBrasao)}?t=${new Date().getTime()}`} 
+                      alt="Brasão" 
+                      className="max-h-full w-auto object-contain" 
+                      onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/150?text=Logo")}
+                    />
                   </div>
                   <div>
                     <h1 className="text-xl font-black text-slate-900 uppercase leading-none tracking-tighter">{config?.nomeEntidade || 'Prefeitura Municipal'}</h1>
@@ -261,16 +267,12 @@ function A11yBtn({ icon, label, onClick, active = false }: any) {
 
 function VLibrasWidget() {
   useEffect(() => {
-    // Garante que o código só roda no navegador (Cliente) e não duplica
     if (typeof window !== 'undefined' && !document.querySelector('[vw]')) {
-      
-      // 1. Carrega o Script Oficial do Governo
       const script = document.createElement('script');
       script.src = 'https://vlibras.gov.br/app/vlibras-plugin.js';
       script.async = true;
       
       script.onload = () => {
-        // 2. Quando o script carregar, cria o HTML do VLibras
         const widgetContainer = document.createElement('div');
         widgetContainer.innerHTML = `
           <div vw="true" class="enabled" style="display: block; z-index: 2147483647 !important; position: fixed; right: 10px; top: 50%; transform: translateY(-50%);">
@@ -281,10 +283,8 @@ function VLibrasWidget() {
           </div>
         `;
         
-        // 3. Injeta o HTML no fim da página (seguro contra o React)
         document.body.appendChild(widgetContainer.firstElementChild!);
 
-        // 4. Inicia o Widget com um pequeno delay para garantir que o HTML já lá está
         setTimeout(() => {
           if ((window as any).VLibras) {
             new (window as any).VLibras.Widget('https://vlibras.gov.br/app');
@@ -296,6 +296,5 @@ function VLibrasWidget() {
     }
   }, []);
 
-  // O componente não devolve HTML do React, ele faz tudo via Vanilla JS!
   return null;
 }

@@ -154,7 +154,8 @@ export default function GestaoEsicPage() {
     formData.append("file", file);
     setFazendoUpload(true);
     try {
-      const { data } = await api.post('/portal/arquivos/upload', formData, {
+      // ATUALIZADO AQUI: Passando o parâmetro subpasta=sic na URL
+      const { data } = await api.post('/portal/arquivos/upload?subpasta=sic', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setArquivosUrls(prev => [...prev, data.url]);

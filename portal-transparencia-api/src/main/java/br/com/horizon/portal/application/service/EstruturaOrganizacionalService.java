@@ -16,11 +16,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.Color;
-import java.io.File;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,7 +38,7 @@ public class EstruturaOrganizacionalService {
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
     
-    // NOVO: Serviço de armazenamento injetado para controlar o ciclo de vida dos arquivos físicos
+    // Serviço de armazenamento injetado. Lida automaticamente com as subpastas.
     private final ArmazenamentoService armazenamentoService;
 
     private static final String ENTIDADE_NOME = "ESTRUTURA_ORGANIZACIONAL";
@@ -72,7 +72,7 @@ public class EstruturaOrganizacionalService {
                 new TypeReference<Map<String, Object>>() {
                 });
 
-        // REGRA DE SAÚDE DO SERVIDOR: Verifica se a foto mudou ou foi removida. Se sim, apaga a antiga fisicamente.
+        // REGRA DE SAÚDE DO SERVIDOR: Verifica se a foto mudou ou foi removida.
         if (existente.getUrlFotoDirigente() != null && !existente.getUrlFotoDirigente().equals(dto.getUrlFotoDirigente())) {
             armazenamentoService.apagar(existente.getUrlFotoDirigente());
         }
@@ -87,7 +87,6 @@ public class EstruturaOrganizacionalService {
         existente.setEmailInstitucional(dto.getEmailInstitucional());
         existente.setLinkCurriculo(dto.getLinkCurriculo());
         
-        // Atualiza a URL da foto com a nova (que pode ser null caso o usuário tenha clicado em "Remover Foto")
         existente.setUrlFotoDirigente(dto.getUrlFotoDirigente());
         
         existente.setAtualizadoPor(usuarioLogado);
@@ -153,19 +152,28 @@ public class EstruturaOrganizacionalService {
         logoCell.setBorder(Rectangle.NO_BORDER);
         logoCell.setHorizontalAlignment(Element.ALIGN_CENTER);
 
-        try {
-            String path = System.getProperty("user.dir") + File.separator + "Imagens";
-            File folder = new File(path);
-            if (folder.exists()) {
-                File[] files = folder.listFiles((dir, name) -> name.startsWith("brasao"));
-                if (files != null && files.length > 0) {
-                    Image brasao = Image.getInstance(files[0].getAbsolutePath());
+        // NOVA LÓGICA DO BRASÃO: Dinâmica, baseada no Banco de Dados e isolada no ArmazenamentoService
+        if (config != null && config.getUrlBrasao() != null && config.getUrlBrasao().contains("/api/v1/portal/arquivos/")) {
+            try {
+                // Extrai apenas o miolo relativo (ex: "config/uuid.png")
+                String urlRelativa = config.getUrlBrasao().replace("/api/v1/portal/arquivos/", "");
+                String[] partes = urlRelativa.split("/");
+                
+                Resource resource = null;
+                if (partes.length == 2) {
+                    resource = armazenamentoService.carregar(partes[0], partes[1]);
+                } else if (partes.length == 1) {
+                    resource = armazenamentoService.carregar("geral", partes[0]); // fallback de segurança
+                }
+
+                if (resource != null && resource.exists()) {
+                    Image brasao = Image.getInstance(resource.getFile().getAbsolutePath());
                     brasao.scaleToFit(50, 50);
                     logoCell.addElement(brasao);
                 }
+            } catch (Exception e) {
+                log.warn("Falha ao carregar a imagem do brasão dinamicamente para o PDF a partir do Storage.", e);
             }
-        } catch (Exception e) {
-            log.warn("Falha ao carregar a imagem do brasão dinamicamente.", e);
         }
 
         headerTable.addCell(logoCell);
@@ -194,12 +202,11 @@ public class EstruturaOrganizacionalService {
 
         PdfPTable table = new PdfPTable(4);
         table.setWidthPercentage(100f);
-        table.setWidths(new float[] { 3.5f, 2.5f, 2f, 2f }); // Ajustei a proporção das colunas
+        table.setWidths(new float[] { 3.5f, 2.5f, 2f, 2f });
         table.setSpacingBefore(10);
 
         String[] cabecalhos = { "Órgão / Secretaria", "Dirigente", "Cargo", "Contatos" };
         for (String cab : cabecalhos) {
-            // Fonte 9 para o cabeçalho e padding 5 (Padrão corporativo)
             PdfPCell cell = new PdfPCell(
                     new Phrase(cab, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE)));
             cell.setBackgroundColor(new Color(15, 23, 42));
@@ -208,7 +215,6 @@ public class EstruturaOrganizacionalService {
             table.addCell(cell);
         }
 
-        // Fonte 8 para os dados (Exatamente como estava no Receitas)
         Font fontDados = FontFactory.getFont(FontFactory.HELVETICA, 8);
         for (EstruturaOrganizacionalDTO entity : estruturas) {
             String orgaoFormatado = entity.getNomeOrgao();
@@ -229,7 +235,6 @@ public class EstruturaOrganizacionalService {
                     new Phrase(entity.getCargoDirigente() != null ? entity.getCargoDirigente() : "", fontDados));
             PdfPCell c4 = new PdfPCell(new Phrase(contatos, fontDados));
 
-            // Padding reduzido para 4 para o relatório não ficar "inchado"
             c1.setPadding(4);
             c2.setPadding(4);
             c3.setPadding(4);
@@ -267,7 +272,7 @@ public class EstruturaOrganizacionalService {
                 .horarioAtendimento(entity.getHorarioAtendimento()).enderecoCompleto(entity.getEnderecoCompleto())
                 .telefoneContato(entity.getTelefoneContato()).emailInstitucional(entity.getEmailInstitucional())
                 .linkCurriculo(entity.getLinkCurriculo())
-                .urlFotoDirigente(entity.getUrlFotoDirigente()) // NOVO
+                .urlFotoDirigente(entity.getUrlFotoDirigente())
                 .criadoEm(entity.getCriadoEm())
                 .atualizadoEm(entity.getAtualizadoEm())
                 .build();
@@ -279,7 +284,7 @@ public class EstruturaOrganizacionalService {
                 .cargoDirigente(dto.getCargoDirigente()).horarioAtendimento(dto.getHorarioAtendimento())
                 .enderecoCompleto(dto.getEnderecoCompleto()).telefoneContato(dto.getTelefoneContato())
                 .emailInstitucional(dto.getEmailInstitucional()).linkCurriculo(dto.getLinkCurriculo())
-                .urlFotoDirigente(dto.getUrlFotoDirigente()) // NOVO
+                .urlFotoDirigente(dto.getUrlFotoDirigente())
                 .build();
     }
 }

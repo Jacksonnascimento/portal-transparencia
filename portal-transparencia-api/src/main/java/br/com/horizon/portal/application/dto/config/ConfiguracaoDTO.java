@@ -52,6 +52,7 @@ public class ConfiguracaoDTO {
     public record Update(
             String nomeEntidade,
             String cnpj,
+            String urlBrasao, // <--- CAMPO ADICIONADO AQUI!
             String corPrincipal,
             String endereco,
             String telefone,

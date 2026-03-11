@@ -79,7 +79,8 @@ export default function EstruturaOrganizacionalPage() {
     dataForm.append("file", file);
     setFazendoUpload(true);
     try {
-      const { data } = await api.post('/portal/arquivos/upload', dataForm, {
+      // ATUALIZADO AQUI: Passando o parâmetro subpasta=dirigentes na URL
+      const { data } = await api.post('/portal/arquivos/upload?subpasta=dirigentes', dataForm, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setFormData(prev => ({ ...prev, urlFotoDirigente: data.url }));

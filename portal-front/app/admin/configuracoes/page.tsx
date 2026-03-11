@@ -11,26 +11,23 @@ export default function ConfigPage() {
     endereco: '',
     telefone: '',
     emailContato: '',
-    siteOficial: ''
+    siteOficial: '',
+    urlBrasao: '' // ATUALIZADO: Adicionado para receber a string do backend
   });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
 
   // Carregar dados atuais
   useEffect(() => {
-    // CORREÇÃO: O TypeScript avisou que o nome correto é getPortalConfigs
     configService.getPortalConfigs().then(data => {
       if (data) setFormData(data);
     });
   }, []);
   
-
   // Salvar textos
   const handleSave = async () => {
     setLoading(true);
     try {
-      // Nota: Se o build der erro aqui, é porque o configService do Portal Público
-      // não possui a função updateConfigs (comum em frontends voltados ao cidadão).
       if ((configService as any).updateConfigs) {
         await (configService as any).updateConfigs(formData);
         setMsg('Configurações atualizadas com sucesso!');
@@ -64,7 +61,6 @@ export default function ConfigPage() {
     }
   };
   
-
   return (
     <div className="max-w-4xl mx-auto p-8">
       <h1 className="text-3xl font-black text-slate-900 mb-8 flex items-center gap-3">
@@ -77,7 +73,8 @@ export default function ConfigPage() {
           <span className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Brasão Oficial</span>
           <div className="w-40 h-40 bg-slate-50 rounded-full border-4 border-emerald-50 flex items-center justify-center overflow-hidden mb-4">
             <img 
-              src={configService.getBrasaoUrl()} 
+              // ATUALIZADO: Passando a urlBrasao do banco para o serviço montar
+              src={configService.getBrasaoUrl(formData.urlBrasao)} 
               alt="Brasão" 
               className="max-w-[80%] max-h-[80%] object-contain"
               onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150?text=Sem+Brasão')}

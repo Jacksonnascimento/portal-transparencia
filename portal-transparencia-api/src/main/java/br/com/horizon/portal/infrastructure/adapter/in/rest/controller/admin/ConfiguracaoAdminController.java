@@ -5,7 +5,6 @@ import br.com.horizon.portal.application.service.ConfiguracaoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/configuracoes") 
@@ -22,10 +21,5 @@ public class ConfiguracaoAdminController {
     @PutMapping
     public ResponseEntity<ConfiguracaoDTO.Response> atualizar(@RequestBody ConfiguracaoDTO.Update dto) {
         return ResponseEntity.ok(service.atualizar(dto));
-    }
-
-    @PostMapping("/brasao")
-    public ResponseEntity<String> uploadBrasao(@RequestParam("file") MultipartFile file) {
-        return ResponseEntity.ok(service.salvarBrasao(file));
     }
 }

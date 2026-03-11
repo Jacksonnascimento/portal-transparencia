@@ -10,6 +10,7 @@ import {
 import axios from 'axios';
 import { sicService, SicSolicitacaoRequestDTO, SicSolicitacaoResponseDTO } from '../../services/sicService';
 import { satisfacaoService } from '../../services/satisfacaoService';
+import { configService } from '../../services/configService'; // ADICIONADO PARA USAR O NOVO CAMINHO
 import api from '../../services/api';
 
 // Função auxiliar para máscara de CPF/CNPJ
@@ -74,8 +75,8 @@ export default function SicOuvidoriaPage() {
       const uploadPromises = files.map(async (file) => {
         const formDataFile = new FormData();
         formDataFile.append('file', file);
-        // Utiliza axios puro para ignorar interceptors que possam causar erro 403
-        const response = await axios.post(`${baseUrl}/portal/arquivos/upload`, formDataFile);
+        // ALTERAÇÃO 1: Adicionado ?subpasta=sic
+        const response = await axios.post(`${baseUrl}/portal/arquivos/upload?subpasta=sic`, formDataFile);
         return response.data.url;
       });
 
@@ -269,7 +270,8 @@ export default function SicOuvidoriaPage() {
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Seus Anexos:</span>
                     <div className="flex flex-wrap gap-2">
                       {resultadoProtocolo.urlAnexoSolicitacao.split(',').map((url: string, index: number) => (
-                        <a key={index} href={gerarUrlArquivo(url)} target="_blank" rel="noreferrer" 
+                        // ALTERAÇÃO 2: Usando o formatador universal
+                        <a key={index} href={configService.getBrasaoUrl(url)} target="_blank" rel="noreferrer" 
                            className="flex items-center gap-1.5 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase tracking-widest">
                           <Paperclip size={12} /> Anexo {index + 1}
                         </a>
@@ -288,7 +290,8 @@ export default function SicOuvidoriaPage() {
                 {resultadoProtocolo.urlAnexoResposta && (
                   <div className="mb-4 space-y-2">
                     {resultadoProtocolo.urlAnexoResposta.split(',').map((url: string, index: number) => (
-                      <a key={index} href={gerarUrlArquivo(url)} target="_blank" rel="noreferrer" 
+                      // ALTERAÇÃO 3: Usando o formatador universal
+                      <a key={index} href={configService.getBrasaoUrl(url)} target="_blank" rel="noreferrer" 
                          className="flex items-center justify-center gap-2 bg-blue-600/20 text-blue-300 hover:bg-blue-600 hover:text-white transition-colors p-3 rounded-xl text-[10px] font-black uppercase tracking-widest w-full">
                         <Download size={16} /> Baixar Resposta Oficial ({index + 1})
                       </a>

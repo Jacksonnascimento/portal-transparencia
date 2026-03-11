@@ -60,6 +60,23 @@ const formatTelefone = (value: string) => {
   }
 };
 
+// NOVO: Função centralizada para resolver o caminho da imagem do brasão
+const getDownloadUrl = (path?: string) => {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+  const cleanApiUrl = apiUrl.replace(/\/api\/v1\/?$/, "");
+  let caminhoCorrigido = path;
+  if (caminhoCorrigido.startsWith("/api/v1/arquivos/")) {
+    caminhoCorrigido = caminhoCorrigido.replace("/api/v1/arquivos/", "/api/v1/portal/arquivos/");
+  }
+  // Retrocompatibilidade para quem ainda tem a URL antiga gravada no banco
+  if (caminhoCorrigido.includes("/configuracoes/brasao")) {
+     return `${cleanApiUrl}${caminhoCorrigido}`;
+  }
+  return `${cleanApiUrl}${caminhoCorrigido}`;
+};
+
 export default function ConfiguracoesPage() {
   const [activeTab, setActiveTab] = useState<'identidade' | 'juridico' | 'atendimento'>('identidade');
   const [formData, setFormData] = useState<Configuracao>({
@@ -150,19 +167,19 @@ export default function ConfiguracoesPage() {
     setUploading(true);
     setError(null);
     try {
-      await api.post('/configuracoes/brasao', uploadData, {
+      // PADRONIZADO: Usamos a rota universal de arquivos com a subpasta "config"
+      const { data } = await api.post('/portal/arquivos/upload?subpasta=config', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      const newBrasaoUrl = `/api/v1/portal/configuracoes/brasao?t=${Date.now()}`;
-      setFormData(prev => ({ ...prev, urlBrasao: newBrasaoUrl }));
-      window.dispatchEvent(new Event('horizon:configUpdated'));
-      setSuccess("Brasão atualizado!");
-      setTimeout(() => setSuccess(null), 3000);
+      setFormData(prev => ({ ...prev, urlBrasao: data.url }));
+      setSuccess("Brasão processado! Clique em 'Salvar Configurações' no rodapé para confirmar.");
+      setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
       setError("Erro ao fazer upload da imagem.");
     } finally {
       setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -237,7 +254,7 @@ export default function ConfiguracoesPage() {
                     <div className="relative group w-40 h-40 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden mb-4">
                       {formData.urlBrasao ? (
                         <img 
-                          src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}${formData.urlBrasao}`} 
+                          src={getDownloadUrl(formData.urlBrasao)} 
                           alt="Brasão" 
                           className="w-full h-full object-contain p-4"
                         />
@@ -350,7 +367,6 @@ export default function ConfiguracoesPage() {
                         <FileText className="absolute left-3 top-[26px] text-slate-400" size={14} />
                         <input type="url" placeholder="https://" value={formData.diarioOficial} onChange={e => setFormData({...formData, diarioOficial: e.target.value})} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-black" />
                       </div>
-                      {/* CAMPO NOVO ADICIONADO AQUI */}
                       <div className="relative">
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Portal do Contribuinte</label>
                         <ExternalLink className="absolute left-3 top-[26px] text-slate-400" size={14} />
@@ -385,7 +401,6 @@ export default function ConfiguracoesPage() {
             <div className="grid grid-cols-1 gap-6 animate-in slide-in-from-top-4 duration-300">
               <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
                 
-                {/* CAMPOS NOVOS DA OUVIDORIA (RODAPÉ) ADICIONADOS AQUI */}
                 <section>
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
                     <Phone size={14} className="text-brand" /> Ouvidoria Geral 
