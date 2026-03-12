@@ -23,7 +23,23 @@ export default function DividaAtivaPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [fNome, setFNome] = useState('');
   const [fAno, setFAno] = useState('');
-  const [fTipoDivida, setFTipoDivida] = useState(''); // NOVO ESTADO: Tipo de Dívida
+  const [fTipoDivida, setFTipoDivida] = useState(''); 
+  
+  // NOVO ESTADO: Guarda os anos que vieram da API
+  const [anosDisponiveis, setAnosDisponiveis] = useState<number[]>([]);
+
+  // BUSCA OS ANOS DISPONÍVEIS ASSIM QUE A TELA CARREGAR
+  useEffect(() => {
+    const carregarAnos = async () => {
+      try {
+        const response = await api.get('/divida-ativa/anos');
+        setAnosDisponiveis(response.data);
+      } catch (err) {
+        console.error("Erro ao carregar lista de anos disponíveis:", err);
+      }
+    };
+    carregarAnos();
+  }, []);
 
   const fetchDividas = useCallback(async (pageNumber: number) => {
     setLoading(true);
@@ -32,7 +48,7 @@ export default function DividaAtivaPage() {
       let params = `page=${pageNumber}&size=20&sort=anoInscricao,desc`;
       if (fNome) params += `&nome=${encodeURIComponent(fNome)}`;
       if (fAno) params += `&ano=${fAno}`;
-      if (fTipoDivida) params += `&tipoDivida=${encodeURIComponent(fTipoDivida)}`; // NOVA QUERY
+      if (fTipoDivida) params += `&tipoDivida=${encodeURIComponent(fTipoDivida)}`;
 
       const response = await api.get(`/divida-ativa?${params}`);
       setData(response.data);
@@ -48,12 +64,10 @@ export default function DividaAtivaPage() {
 
   const formatMoney = (val?: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
-  // --- FUNÇÃO DE MÁSCARA (LGPD) ---
   const maskDocumento = (val?: string) => {
     if (!val) return "---";
     const clean = val.replace(/\D/g, '');
     
-    // Máscara simplificada: preserva início e fim, oculta o meio (Ex: 123.***.***-00)
     if (clean.length === 11) {
       return `${clean.substring(0, 3)}.***.***-${clean.substring(9)}`;
     } else if (clean.length === 14) {
@@ -69,7 +83,7 @@ export default function DividaAtivaPage() {
       r.id, 
       r.anoInscricao, 
       `"${r.nomeDevedor}"`, 
-      maskDocumento(r.cpfCnpj), // Exporta mascarado também para segurança
+      maskDocumento(r.cpfCnpj),
       r.tipoDivida || '', 
       r.valorTotalDivida
     ]);
@@ -109,11 +123,20 @@ export default function DividaAtivaPage() {
 
         {showFilters && (
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6 animate-in fade-in slide-in-from-top-2">
-            {/* Grid ajustado para 5 colunas para caber o novo filtro */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Ano</label>
-                <input type="number" placeholder="Ex: 2025" value={fAno} onChange={(e) => { setFAno(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm" />
+                {/* AQUI ESTÁ A MÁGICA: Substituímos o input pelo select dinâmico */}
+                <select 
+                  value={fAno} 
+                  onChange={(e) => { setFAno(e.target.value); setPage(0); }} 
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm text-slate-700"
+                >
+                  <option value="">Todos os anos</option>
+                  {anosDisponiveis.map((ano) => (
+                    <option key={ano} value={ano}>{ano}</option>
+                  ))}
+                </select>
               </div>
               <div className="md:col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Nome do Devedor</label>
@@ -124,7 +147,6 @@ export default function DividaAtivaPage() {
                 <input type="text" placeholder="Ex: IPTU, ISS..." value={fTipoDivida} onChange={(e) => { setFTipoDivida(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm" />
               </div>
               <div className="flex justify-end">
-                {/* Limpa todos os 3 filtros e reseta a página */}
                 <button onClick={() => {setFAno(''); setFNome(''); setFTipoDivida(''); setPage(0);}} className="px-4 py-2 mt-5 text-[10px] font-bold text-red-500 hover:bg-red-50 rounded-lg uppercase flex items-center gap-2">
                   <X size={14} /> Limpar
                 </button>

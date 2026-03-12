@@ -12,6 +12,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/divida-ativa") // ROTA PRIVADA
@@ -33,6 +34,11 @@ public class DividaAtivaController {
         // Agora passamos os 3 parâmetros para a fábrica de buscas
         Specification<DividaAtivaEntity> spec = searchService.criarSpecificationDivida(nome, ano, tipoDivida);
         return ResponseEntity.ok(repository.findAll(spec, pageable));
+    }
+
+    @GetMapping("/anos")
+    public ResponseEntity<List<Integer>> listarAnosDisponiveis() {
+        return ResponseEntity.ok(service.listarAnosDisponiveis());
     }
 
     @PostMapping("/upload")

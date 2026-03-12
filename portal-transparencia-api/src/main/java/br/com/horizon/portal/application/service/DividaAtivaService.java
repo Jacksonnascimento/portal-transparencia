@@ -134,4 +134,11 @@ public class DividaAtivaService {
             log.error("Falha ao gerar JSON de auditoria", e);
         }
     }
+
+   
+    
+    @Transactional(readOnly = true)
+    public List<Integer> listarAnosDisponiveis() {
+        return repository.findAnosDisponiveis();
+    }
 }
