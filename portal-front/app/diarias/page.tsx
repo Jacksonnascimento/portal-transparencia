@@ -42,14 +42,15 @@ export default function DiariasPage() {
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
 
-  // --- INICIALIZAÇÃO DE ANO CORRENTE ---
   const anoAtual = new Date().getFullYear().toString();
 
   const [filtros, setFiltros] = useState({
     exercicio: anoAtual,
     nomeFavorecido: '',
     destinoViagem: '',
-    numeroProcesso: ''
+    numeroProcesso: '',
+    dataSaida: '',
+    dataRetorno: ''
   });
 
   const [filtrosAplicados, setFiltrosAplicados] = useState(filtros);
@@ -60,11 +61,25 @@ export default function DiariasPage() {
       .catch(err => console.error("Erro ao carregar anos:", err));
   }, []);
 
+  // Utilitário para converter a data do backend de forma segura para filtro em memória
+  const parseDateForComparison = (dateVal: any) => {
+    if (!dateVal) return null;
+    if (Array.isArray(dateVal)) {
+      return new Date(dateVal[0], dateVal[1] - 1, dateVal[2]).getTime();
+    }
+    const parts = dateVal.split('-');
+    if (parts.length >= 3) {
+       return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2].substring(0,2))).getTime();
+    }
+    return new Date(dateVal).getTime();
+  };
+
   const buscarDados = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
+      // Nota: Não enviamos dataSaida e dataRetorno para a API, pois filtramos no Front
       if (filtros.exercicio) params.append('exercicio', filtros.exercicio);
       if (filtros.nomeFavorecido) params.append('nomeFavorecido', filtros.nomeFavorecido);
       if (filtros.destinoViagem) params.append('destinoViagem', filtros.destinoViagem);
@@ -88,6 +103,31 @@ export default function DiariasPage() {
         dadosRecebidos = response.data;
         total = dadosRecebidos.length;
         paginasTotaisApi = Math.ceil(total / 100); 
+      }
+
+      // --- FILTRO LOCAL DE DATAS (FRONT-END) ---
+      // Caso o utilizador tenha preenchido as datas, filtramos o que a API nos devolveu do ano
+      if (filtros.dataSaida || filtros.dataRetorno) {
+        
+        const filterSaidaTime = filtros.dataSaida ? 
+          new Date(Number(filtros.dataSaida.split('-')[0]), Number(filtros.dataSaida.split('-')[1])-1, Number(filtros.dataSaida.split('-')[2])).getTime() : null;
+        
+        const filterRetornoTime = filtros.dataRetorno ? 
+          new Date(Number(filtros.dataRetorno.split('-')[0]), Number(filtros.dataRetorno.split('-')[1])-1, Number(filtros.dataRetorno.split('-')[2])).getTime() : null;
+
+        dadosRecebidos = dadosRecebidos.filter(item => {
+           const saidaTime = parseDateForComparison(item.dataSaida);
+           const retornoTime = parseDateForComparison(item.dataRetorno);
+
+           let isValid = true;
+           if (filterSaidaTime && saidaTime && saidaTime < filterSaidaTime) isValid = false;
+           if (filterRetornoTime && retornoTime && retornoTime > filterRetornoTime) isValid = false;
+           
+           return isValid;
+        });
+        
+        total = dadosRecebidos.length;
+        paginasTotaisApi = Math.ceil(total / 100); // Recalcula páginas baseado no filtro local
       }
 
       setDiarias(dadosRecebidos);
@@ -121,7 +161,7 @@ export default function DiariasPage() {
       if (filtrosAplicados.nomeFavorecido) params.append('nomeFavorecido', filtrosAplicados.nomeFavorecido);
       if (filtrosAplicados.destinoViagem) params.append('destinoViagem', filtrosAplicados.destinoViagem);
       if (filtrosAplicados.numeroProcesso) params.append('numeroProcesso', filtrosAplicados.numeroProcesso);
-
+      
       const response = await api.get(`/portal/diarias/exportar/${formato}?${params.toString()}`, {
         responseType: 'blob',
       });
@@ -191,10 +231,18 @@ export default function DiariasPage() {
       </div>
 
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 items-end">
           <FilterBox label="Exercício">
-            <select value={filtros.exercicio} onChange={(e) => setFiltros({...filtros, exercicio: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none cursor-pointer">
-              {/* Fallback de usabilidade para caso a API demore */}
+            <select 
+              value={filtros.exercicio} 
+              onChange={(e) => setFiltros({
+                ...filtros, 
+                exercicio: e.target.value,
+                dataSaida: '', // Limpa as datas ao trocar de ano para não dar conflito
+                dataRetorno: ''
+              })} 
+              className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none cursor-pointer"
+            >
               {!anosDisponiveis.includes(Number(anoAtual)) && (
                 <option value={anoAtual}>{anoAtual}</option>
               )}
@@ -202,7 +250,7 @@ export default function DiariasPage() {
             </select>
           </FilterBox>
           <FilterBox label="Favorecido (Nome)">
-            <input type="text" placeholder="Nome do servidor..." value={filtros.nomeFavorecido} onChange={(e) => setFiltros({...filtros, nomeFavorecido: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none placeholder:text-slate-300" />
+            <input type="text" placeholder="Nome..." value={filtros.nomeFavorecido} onChange={(e) => setFiltros({...filtros, nomeFavorecido: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none placeholder:text-slate-300" />
           </FilterBox>
           <FilterBox label="Destino">
             <input type="text" placeholder="Ex: Brasília..." value={filtros.destinoViagem} onChange={(e) => setFiltros({...filtros, destinoViagem: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none placeholder:text-slate-300" />
@@ -210,6 +258,28 @@ export default function DiariasPage() {
           <FilterBox label="Nº Processo">
             <input type="text" placeholder="Ex: 123/2024" value={filtros.numeroProcesso} onChange={(e) => setFiltros({...filtros, numeroProcesso: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none placeholder:text-slate-300" />
           </FilterBox>
+          
+          <FilterBox label="Data de Saída">
+            <input 
+              type="date" 
+              value={filtros.dataSaida} 
+              onChange={(e) => setFiltros({...filtros, dataSaida: e.target.value})} 
+              min={`${filtros.exercicio}-01-01`} // Trava o calendário no ano selecionado
+              max={`${filtros.exercicio}-12-31`} 
+              className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none" 
+            />
+          </FilterBox>
+          <FilterBox label="Data de Retorno">
+            <input 
+              type="date" 
+              value={filtros.dataRetorno} 
+              onChange={(e) => setFiltros({...filtros, dataRetorno: e.target.value})} 
+              min={filtros.dataSaida || `${filtros.exercicio}-01-01`} // A volta não pode ser antes da saída
+              max={`${filtros.exercicio}-12-31`} 
+              className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none" 
+            />
+          </FilterBox>
+
           <button onClick={handlePesquisar} className="bg-slate-900 text-white h-[46px] rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[var(--cor-primaria)] transition-colors shadow-md flex items-center justify-center gap-2">
             <Search size={16} /> Buscar
           </button>
@@ -240,12 +310,12 @@ export default function DiariasPage() {
               ) : diarias.map((item, i) => (
                 <tr key={item.id || i} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="text-xs font-black text-slate-800 uppercase flex items-center gap-1">
+                    <div className="text-xs font-black text-slate-800 uppercase flex items-center gap-1 whitespace-nowrap">
                       <Calendar size={12} className="text-slate-400" /> 
                       {formatDate(item.dataSaida)} a {formatDate(item.dataRetorno)}
                     </div>
                     <div className="text-[10px] text-slate-500 font-bold mt-1 uppercase flex items-center gap-1 truncate max-w-[200px]">
-                      <MapPin size={10} className="text-[var(--cor-primaria)]" /> {item.destinoViagem}
+                      <MapPin size={10} className="text-[var(--cor-primaria)] shrink-0" /> {item.destinoViagem}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -255,7 +325,7 @@ export default function DiariasPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">
+                    <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
                       <FileText size={10} /> {item.numeroProcesso || '---'}
                     </span>
                   </td>
@@ -274,7 +344,7 @@ export default function DiariasPage() {
                 </tr>
               ))}
               {!loading && !error && diarias.length === 0 && (
-                 <tr><td colSpan={5} className="py-12 text-center text-slate-500 text-sm">Nenhum registro de diária ou passagem encontrado.</td></tr>
+                 <tr><td colSpan={5} className="py-12 text-center text-slate-500 text-sm">Nenhum registro de diária ou passagem encontrado no período.</td></tr>
               )}
             </tbody>
           </table>
