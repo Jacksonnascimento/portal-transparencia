@@ -85,7 +85,8 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            <Link href="/institucional" className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[var(--cor-primaria)] shadow-sm hover:shadow-md transition-all group flex items-start gap-6">
+            {/* LINK ATUALIZADO PARA A NOVA ROTA /estrutura-organizacional */}
+            <Link href="/estrutura-organizacional" className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-[var(--cor-primaria)] shadow-sm hover:shadow-md transition-all group flex items-start gap-6">
               <div className="bg-slate-50 text-slate-600 group-hover:bg-[var(--cor-primaria-fundo)] group-hover:text-[var(--cor-primaria)] p-5 rounded-2xl transition-colors shrink-0">
                 <Building2 size={36} />
               </div>

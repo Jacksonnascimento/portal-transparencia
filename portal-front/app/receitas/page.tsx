@@ -40,9 +40,14 @@ export default function ReceitasPage() {
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
 
+  // --- INICIALIZAÇÃO DE ANO E MÊS CORRENTES ---
+  const dataAtual = new Date();
+  const anoAtual = dataAtual.getFullYear().toString();
+  const mesAtual = (dataAtual.getMonth() + 1).toString();
+
   const [filtros, setFiltros] = useState({
-    exercicio: '', 
-    mes: '',
+    exercicio: anoAtual, 
+    mes: mesAtual,
     codigoNatureza: '',
     origem: '',
     categoria: '',
@@ -86,7 +91,7 @@ export default function ReceitasPage() {
       ]);
 
       setReceitas(resLista.data.content || []);
-      setTotalPaginas(resLista.data.totalPages || 0); // Define o total de páginas retornado
+      setTotalPaginas(resLista.data.totalPages || 0); 
       
       setResumo({
         totalArrecadado: resResumo.data.totalArrecadado || 0,
@@ -101,20 +106,18 @@ export default function ReceitasPage() {
     } finally {
       setLoading(false);
     }
-  }, [filtros, paginaAtual]); // Inclui paginaAtual nas dependências
+  }, [filtros, paginaAtual]); 
 
-  // Dispara a busca quando a página muda (ou no carregamento inicial)
   useEffect(() => {
     buscarDados();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginaAtual]); 
 
-  // Handler inteligente para a pesquisa (reseta para a página 0)
   const handlePesquisar = () => {
     if (paginaAtual === 0) {
       buscarDados();
     } else {
-      setPaginaAtual(0); // Mudar para 0 engatilha o useEffect automaticamente
+      setPaginaAtual(0); 
     }
   };
 
@@ -216,13 +219,11 @@ export default function ReceitasPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3 items-end">
           <FilterBox label="Exercício">
             <select value={filtros.exercicio} onChange={(e) => setFiltros({...filtros, exercicio: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none cursor-pointer">
-              <option value="">Todos os anos</option>
               {anos.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </FilterBox>
           <FilterBox label="Mês">
             <select value={filtros.mes} onChange={(e) => setFiltros({...filtros, mes: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none cursor-pointer">
-              <option value="">Todos</option>
               {meses.map(m => <option key={m.num} value={m.num}>{m.nome}</option>)}
             </select>
           </FilterBox>
@@ -297,7 +298,6 @@ export default function ReceitasPage() {
           </table>
         </div>
         
-        {/* --- RODAPÉ DE PAGINAÇÃO --- */}
         {!loading && receitas.length > 0 && (
           <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">

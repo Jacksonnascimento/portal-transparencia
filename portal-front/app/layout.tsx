@@ -120,7 +120,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="max-w-7xl mx-auto px-4 h-24 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-4 group">
                   <div className="h-16 w-16 flex items-center justify-center p-1 bg-slate-50 rounded-2xl border border-slate-100 hover:border-[var(--cor-primaria)] transition-all">
-                    {/* CORRIGIDO: Agora usa a URL dinâmica vinda do banco */}
                     <img 
                       src={`${configService.getBrasaoUrl(config?.urlBrasao)}?t=${new Date().getTime()}`} 
                       alt="Brasão" 
@@ -137,7 +136,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </div>
                 </Link>
                 <nav className="hidden md:flex items-center gap-8">
-                  <Link href="/institucional" className="text-sm font-bold text-slate-600 hover:text-[var(--cor-primaria)] transition-colors uppercase tracking-widest">Institucional</Link>
+                  {/* LINK ATUALIZADO NO MENU PARA A NOVA ROTA */}
+                  <Link href="/estrutura-organizacional" className="text-sm font-bold text-slate-600 hover:text-[var(--cor-primaria)] transition-colors uppercase tracking-widest">Institucional</Link>
                   <Link href="/receitas" className="text-sm font-bold text-slate-600 hover:text-[var(--cor-primaria)] transition-colors uppercase tracking-widest">Receitas</Link>
                   <Link href="/despesas" className="text-sm font-bold text-slate-600 hover:text-[var(--cor-primaria)] transition-colors uppercase tracking-widest">Despesas</Link>
                   <Link href="/pessoal" className="text-sm font-bold text-slate-600 hover:text-[var(--cor-primaria)] transition-colors uppercase tracking-widest">Pessoal</Link>
@@ -246,7 +246,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         )}
 
-        {/* INJETA O VLIBRAS AQUI NO FUNDO */}
         <VLibrasWidget />
       </body>
     </html>
@@ -254,7 +253,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 
 // ============================================================================
-// SUBCOMPONENTES (Ficam aqui no final, organizados e sem precisar de imports)
+// SUBCOMPONENTES
 // ============================================================================
 
 function A11yBtn({ icon, label, onClick, active = false }: any) {

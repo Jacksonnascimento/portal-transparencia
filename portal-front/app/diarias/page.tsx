@@ -8,8 +8,6 @@ import {
 import Link from 'next/link';
 import api from '../../services/api';
 
-
-// Interface baseada no DiariaPassagemDTO.Response
 interface DiariaPassagem {
   id: number;
   exercicio: number;
@@ -38,17 +36,17 @@ export default function DiariasPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [anosDisponiveis, setAnosDisponiveis] = useState<number[]>([]);
 
-  // Estados do Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selected, setSelected] = useState<DiariaPassagem | null>(null);
 
-  // --- ESTADOS DE PAGINAÇÃO ---
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
 
-  // Filtros mapeados conforme o Controller
+  // --- INICIALIZAÇÃO DE ANO CORRENTE ---
+  const anoAtual = new Date().getFullYear().toString();
+
   const [filtros, setFiltros] = useState({
-    exercicio: '',
+    exercicio: anoAtual,
     nomeFavorecido: '',
     destinoViagem: '',
     numeroProcesso: ''
@@ -56,7 +54,6 @@ export default function DiariasPage() {
 
   const [filtrosAplicados, setFiltrosAplicados] = useState(filtros);
 
-  // Busca os anos disponíveis ao carregar a página
   useEffect(() => {
     api.get('/portal/diarias/anos')
       .then(res => setAnosDisponiveis(res.data))
@@ -73,7 +70,6 @@ export default function DiariasPage() {
       if (filtros.destinoViagem) params.append('destinoViagem', filtros.destinoViagem);
       if (filtros.numeroProcesso) params.append('numeroProcesso', filtros.numeroProcesso);
       
-      // Paginação Dinâmica
       params.append('page', paginaAtual.toString());
       params.append('size', '100'); 
       params.append('sort', 'dataSaida,desc');
@@ -107,7 +103,6 @@ export default function DiariasPage() {
     }
   }, [filtros, paginaAtual]); 
 
-  // Efeito principal que reage a mudanças na página
   useEffect(() => {
     buscarDados();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,7 +146,6 @@ export default function DiariasPage() {
 
   const formatDate = (date: string | undefined) => {
     if (!date) return '---';
-    // Tratando array [ano, mes, dia] ou string YYYY-MM-DD
     if (Array.isArray(date)) return `${String(date[2]).padStart(2, '0')}/${String(date[1]).padStart(2, '0')}/${date[0]}`;
     return new Date(date).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   };
@@ -167,7 +161,6 @@ export default function DiariasPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 bg-slate-50 min-h-screen relative font-sans">
       
-      {/* Navegação Breadcrumb */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-6">
         <Link href="/" className="hover:text-[var(--cor-primaria)] transition-colors flex items-center gap-1">
           <Home size={12} /> Início
@@ -176,7 +169,6 @@ export default function DiariasPage() {
         <span className="text-slate-600">Diárias e Passagens</span>
       </nav>
 
-      {/* Cabeçalho */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
           <button onClick={() => window.history.back()} className="flex items-center text-slate-400 hover:text-[var(--cor-primaria)] mb-2 transition-all font-bold text-xs uppercase tracking-widest">
@@ -188,7 +180,6 @@ export default function DiariasPage() {
           <p className="text-slate-500 font-medium text-sm mt-1">Transparência nos custos com deslocamento de servidores públicos.</p>
         </div>
         
-        {/* Ações de Exportação */}
         <div className="flex gap-2">
           <button onClick={() => handleExport('pdf')} disabled={isExporting} className="bg-white p-3 rounded-xl border border-slate-200 text-slate-500 hover:text-[var(--cor-primaria)] hover:shadow-md transition-all disabled:opacity-50">
             <Printer size={18} className={isExporting ? "animate-pulse" : ""} />
@@ -199,12 +190,14 @@ export default function DiariasPage() {
         </div>
       </div>
 
-      {/* Filtros */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           <FilterBox label="Exercício">
             <select value={filtros.exercicio} onChange={(e) => setFiltros({...filtros, exercicio: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none cursor-pointer">
-              <option value="">Todos os anos</option>
+              {/* Fallback de usabilidade para caso a API demore */}
+              {!anosDisponiveis.includes(Number(anoAtual)) && (
+                <option value={anoAtual}>{anoAtual}</option>
+              )}
               {anosDisponiveis.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </FilterBox>
@@ -227,7 +220,6 @@ export default function DiariasPage() {
         {totalRegistros} {totalRegistros === 1 ? 'registro encontrado' : 'registros encontrados'}
       </div>
 
-      {/* Tabela de Listagem */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -288,7 +280,6 @@ export default function DiariasPage() {
           </table>
         </div>
 
-        {/* --- RODAPÉ DE PAGINAÇÃO PADRÃO PNTP --- */}
         {!loading && diarias.length > 0 && (
           <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
@@ -314,12 +305,10 @@ export default function DiariasPage() {
         )}
       </div>
 
-      {/* --- MODAL DA FICHA TÉCNICA --- */}
       {isModalOpen && selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsModalOpen(false)}>
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
             
-            {/* Header Modal */}
             <div className="bg-[var(--cor-primaria)] p-5 text-white flex justify-between items-center shrink-0">
               <div className="flex gap-3 items-center">
                 <div className="bg-white/20 p-2.5 rounded-xl"><Plane size={20}/></div>
@@ -331,10 +320,8 @@ export default function DiariasPage() {
               <button onClick={() => setIsModalOpen(false)} className="bg-white/20 p-2 rounded-full hover:bg-white/40 transition-colors"><X size={18} /></button>
             </div>
 
-            {/* Content Modal */}
             <div className="p-5 overflow-y-auto space-y-6">
               
-              {/* Bloco Viagem */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 pb-2 mb-3 flex items-center gap-1">
                    <MapPin size={12}/> Dados do Deslocamento
@@ -346,7 +333,6 @@ export default function DiariasPage() {
                 </div>
               </div>
 
-              {/* Bloco Favorecido e Processo */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                   <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 pb-2 mb-3">O Favorecido</h3>
@@ -360,7 +346,6 @@ export default function DiariasPage() {
                 </div>
               </div>
 
-              {/* Bloco Financeiro */}
               <div className="bg-[var(--cor-primaria-fundo)]/30 p-4 rounded-xl border border-[var(--cor-primaria-fundo)]">
                 <h3 className="text-[10px] font-black text-[var(--cor-primaria)] uppercase tracking-widest border-b border-[var(--cor-primaria)]/20 pb-2 mb-3 flex items-center gap-1">
                    <FileText size={12}/> Composição do Valor
@@ -392,7 +377,6 @@ export default function DiariasPage() {
               </div>
             </div>
 
-            {/* Footer Modal */}
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-center shrink-0">
               <button onClick={() => setIsModalOpen(false)} className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-[var(--cor-primaria)] transition-colors">
                 Fechar Detalhes
@@ -405,7 +389,6 @@ export default function DiariasPage() {
   );
 }
 
-// Subcomponente auxiliar de Layout
 function FilterBox({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="bg-slate-50 px-2 py-1.5 rounded-xl border border-slate-200 flex flex-col focus-within:border-[var(--cor-primaria)] focus-within:ring-1 focus-within:ring-[var(--cor-primaria)] transition-colors">
