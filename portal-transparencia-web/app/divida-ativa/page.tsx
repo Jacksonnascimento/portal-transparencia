@@ -23,6 +23,7 @@ export default function DividaAtivaPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [fNome, setFNome] = useState('');
   const [fAno, setFAno] = useState('');
+  const [fTipoDivida, setFTipoDivida] = useState(''); // NOVO ESTADO: Tipo de Dívida
 
   const fetchDividas = useCallback(async (pageNumber: number) => {
     setLoading(true);
@@ -31,6 +32,7 @@ export default function DividaAtivaPage() {
       let params = `page=${pageNumber}&size=20&sort=anoInscricao,desc`;
       if (fNome) params += `&nome=${encodeURIComponent(fNome)}`;
       if (fAno) params += `&ano=${fAno}`;
+      if (fTipoDivida) params += `&tipoDivida=${encodeURIComponent(fTipoDivida)}`; // NOVA QUERY
 
       const response = await api.get(`/divida-ativa?${params}`);
       setData(response.data);
@@ -40,7 +42,7 @@ export default function DividaAtivaPage() {
     } finally {
       setLoading(false);
     }
-  }, [fNome, fAno]);
+  }, [fNome, fAno, fTipoDivida]);
 
   useEffect(() => { fetchDividas(page); }, [page, fetchDividas]);
 
@@ -107,10 +109,26 @@ export default function DividaAtivaPage() {
 
         {showFilters && (
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6 animate-in fade-in slide-in-from-top-2">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-              <div><label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Ano de Inscrição</label><input type="number" placeholder="Ex: 2025" value={fAno} onChange={(e) => { setFAno(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm" /></div>
-              <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Nome do Devedor</label><input type="text" placeholder="Buscar por nome..." value={fNome} onChange={(e) => { setFNome(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm" /></div>
-              <div className="flex justify-end"><button onClick={() => {setFAno(''); setFNome(''); setPage(0);}} className="px-4 py-2 mt-5 text-[10px] font-bold text-red-500 hover:bg-red-50 rounded-lg uppercase flex items-center gap-2"><X size={14} /> Limpar</button></div>
+            {/* Grid ajustado para 5 colunas para caber o novo filtro */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Ano</label>
+                <input type="number" placeholder="Ex: 2025" value={fAno} onChange={(e) => { setFAno(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Nome do Devedor</label>
+                <input type="text" placeholder="Buscar por nome..." value={fNome} onChange={(e) => { setFNome(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Tipo de Dívida</label>
+                <input type="text" placeholder="Ex: IPTU, ISS..." value={fTipoDivida} onChange={(e) => { setFTipoDivida(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-black text-sm" />
+              </div>
+              <div className="flex justify-end">
+                {/* Limpa todos os 3 filtros e reseta a página */}
+                <button onClick={() => {setFAno(''); setFNome(''); setFTipoDivida(''); setPage(0);}} className="px-4 py-2 mt-5 text-[10px] font-bold text-red-500 hover:bg-red-50 rounded-lg uppercase flex items-center gap-2">
+                  <X size={14} /> Limpar
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -133,7 +151,6 @@ export default function DividaAtivaPage() {
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors text-xs group">
                       <td className="px-6 py-4 font-bold text-slate-500">{item.anoInscricao}</td>
                       <td className="px-6 py-4 font-bold text-slate-800">{item.nomeDevedor}</td>
-                      {/* APLICAÇÃO DA MÁSCARA AQUI */}
                       <td className="px-6 py-4 font-mono text-slate-600">{maskDocumento(item.cpfCnpj)}</td>
                       <td className="px-6 py-4 text-slate-500">{item.tipoDivida || '---'}</td>
                       <td className="px-6 py-4 text-right font-black text-red-600">{formatMoney(item.valorTotalDivida)}</td>

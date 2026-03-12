@@ -23,14 +23,15 @@ public class DividaAtivaController {
     private final DividaAtivaService service;
     private final PortalDividaAtivaService searchService; // Reaproveitamos a lógica de busca do Portal
 
-    @GetMapping
+   @GetMapping
     public ResponseEntity<Page<DividaAtivaEntity>> listarAdmin(
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) Integer ano,
+            @RequestParam(required = false) String tipoDivida, // NOVO PARÂMETRO
             @PageableDefault(size = 20, sort = "anoInscricao") Pageable pageable) {
 
-        // Retorna a entidade completa para o Admin, sem mascarar dados e incluindo id_importacao
-        Specification<DividaAtivaEntity> spec = searchService.criarSpecificationDivida(nome, ano);
+        // Agora passamos os 3 parâmetros para a fábrica de buscas
+        Specification<DividaAtivaEntity> spec = searchService.criarSpecificationDivida(nome, ano, tipoDivida);
         return ResponseEntity.ok(repository.findAll(spec, pageable));
     }
 

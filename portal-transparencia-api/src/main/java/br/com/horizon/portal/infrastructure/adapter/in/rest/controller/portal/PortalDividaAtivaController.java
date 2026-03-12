@@ -23,20 +23,18 @@ public class PortalDividaAtivaController {
     private final PortalDividaAtivaService dividaAtivaService;
 
     public record DividaAtivaPublicaDTO(
-            String nomeDevedor, 
-            String cpfCnpj, 
-            BigDecimal valorTotalDivida, 
-            Integer anoInscricao, 
-            String tipoDivida
-    ) {
+            String nomeDevedor,
+            String cpfCnpj,
+            BigDecimal valorTotalDivida,
+            Integer anoInscricao,
+            String tipoDivida) {
         public static DividaAtivaPublicaDTO fromEntity(DividaAtivaEntity entity) {
             return new DividaAtivaPublicaDTO(
                     entity.getNomeDevedor(),
                     entity.getCpfCnpj(),
                     entity.getValorTotalDivida(),
                     entity.getAnoInscricao(),
-                    entity.getTipoDivida()
-            );
+                    entity.getTipoDivida());
         }
     }
 
@@ -44,13 +42,15 @@ public class PortalDividaAtivaController {
     public ResponseEntity<Page<DividaAtivaPublicaDTO>> listarDividaAtivaPublica(
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) Integer ano,
-            @PageableDefault(size = 20, sort = {"anoInscricao", "nomeDevedor"}) Pageable pageable) {
+            @RequestParam(required = false) String tipoDivida, // NOVO PARÂMETRO
+            @PageableDefault(size = 20, sort = { "anoInscricao", "nomeDevedor" }) Pageable pageable) {
 
-        Specification<DividaAtivaEntity> spec = dividaAtivaService.criarSpecificationDivida(nome, ano);
-        
+        // Passando os 3 parâmetros
+        Specification<DividaAtivaEntity> spec = dividaAtivaService.criarSpecificationDivida(nome, ano, tipoDivida);
+
         Page<DividaAtivaPublicaDTO> page = dividaAtivaRepository.findAll(spec, pageable)
                 .map(DividaAtivaPublicaDTO::fromEntity);
-                
+
         return ResponseEntity.ok(page);
     }
 
@@ -58,10 +58,13 @@ public class PortalDividaAtivaController {
     public void exportarDividaAtiva(
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) Integer ano,
+            @RequestParam(required = false) String tipoDivida, // NOVO PARÂMETRO NA EXPORTAÇÃO
             @RequestParam(name = "formato", required = false, defaultValue = "csv") String formato,
             HttpServletResponse response) throws Exception {
 
-        Specification<DividaAtivaEntity> spec = dividaAtivaService.criarSpecificationDivida(nome, ano);
+        // Passando os 3 parâmetros para garantir que o Excel/PDF saia filtrado
+        // corretamente!
+        Specification<DividaAtivaEntity> spec = dividaAtivaService.criarSpecificationDivida(nome, ano, tipoDivida);
 
         if ("pdf".equalsIgnoreCase(formato)) {
             response.setContentType("application/pdf");

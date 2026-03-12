@@ -33,11 +33,17 @@ public class PortalDividaAtivaService {
     // INJEÇÃO DA NOSSA NOVA ESTRUTURA DE ARQUIVOS
     private final ArmazenamentoService armazenamentoService;
 
-    public Specification<DividaAtivaEntity> criarSpecificationDivida(String nome, Integer ano) {
+    public Specification<DividaAtivaEntity> criarSpecificationDivida(String nome, Integer ano, String tipoDivida) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (ano != null) predicates.add(cb.equal(root.get("anoInscricao"), ano));
             if (nome != null && !nome.isBlank()) predicates.add(cb.like(cb.lower(root.get("nomeDevedor")), "%" + nome.toLowerCase() + "%"));
+            
+            // NOVO FILTRO: Tipo de Dívida (Busca flexível e case-insensitive)
+            if (tipoDivida != null && !tipoDivida.isBlank()) {
+                predicates.add(cb.like(cb.lower(root.get("tipoDivida")), "%" + tipoDivida.toLowerCase() + "%"));
+            }
+            
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
