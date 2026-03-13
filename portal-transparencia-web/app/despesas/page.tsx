@@ -17,7 +17,8 @@ import {
   Info,
   Clock,
   Building2,
-  FileText
+  FileText,
+  Calendar
 } from 'lucide-react';
 
 interface Despesa {
@@ -54,7 +55,7 @@ interface Resumo {
 export default function DespesasPage() {
   const [data, setData] = useState<any>(null);
   const [resumo, setResumo] = useState<Resumo | null>(null);
-  const [anos, setAnos] = useState<number[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -63,32 +64,38 @@ export default function DespesasPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
   
-  const [fAno, setFAno] = useState<string>('');
+  // NOVO: Substituição do fAno por fDataInicio e fDataFim
+  const [fDataInicio, setFDataInicio] = useState<string>('');
+  const [fDataFim, setFDataFim] = useState<string>('');
+  
   const [fCredor, setFCredor] = useState('');
   const [fEmpenho, setFEmpenho] = useState('');
   const [fElemento, setFElemento] = useState('');
 
-  useEffect(() => {
-    api.get('/despesas/anos').then(res => {
-      setAnos(res.data);
-      if (res.data.length > 0 && !fAno) setFAno(res.data[0].toString());
-    }).catch(() => console.error("Erro ao carregar anos"));
-  }, []);
-
+  // 1. Busca Resumo Financeiro (Cards) - Agora depende das datas (ou ano base extraído delas)
   const fetchResumo = useCallback(async () => {
-    if (!fAno) return;
+    // Como os cards ainda exigem um ano base (se mantivermos a lógica original do back), 
+    // extraímos o ano da data inicial ou usamos o ano atual se não houver filtro.
+    let anoBase = new Date().getFullYear();
+    if (fDataInicio) anoBase = parseInt(fDataInicio.substring(0, 4));
+
     try {
-      const res = await api.get(`/despesas/resumo?ano=${fAno}`);
+      const res = await api.get(`/despesas/resumo?ano=${anoBase}`);
       setResumo(res.data);
     } catch (err) { console.error("Erro ao carregar resumo"); }
-  }, [fAno]);
+  }, [fDataInicio]);
 
+  // 2. Busca Listagem Paginada
   const fetchDespesas = useCallback(async (pageNumber: number) => {
     setLoading(true);
     setError(null);
     try {
       let params = `page=${pageNumber}&size=20&sort=dataEmpenho,desc`;
-      if (fAno) params += `&ano=${fAno}`;
+      
+      // NOVO: Enviando as datas para o Backend
+      if (fDataInicio) params += `&dataInicio=${fDataInicio}`;
+      if (fDataFim) params += `&dataFim=${fDataFim}`;
+      
       if (fCredor) params += `&credor=${encodeURIComponent(fCredor)}`;
       if (fEmpenho) params += `&numeroEmpenho=${encodeURIComponent(fEmpenho)}`;
       if (fElemento) params += `&elementoDespesa=${encodeURIComponent(fElemento)}`;
@@ -99,7 +106,7 @@ export default function DespesasPage() {
     } catch (err) {
       setError("Falha ao carregar despesas. Verifique a conexão.");
     } finally { setLoading(false); }
-  }, [fAno, fCredor, fEmpenho, fElemento]);
+  }, [fDataInicio, fDataFim, fCredor, fEmpenho, fElemento]);
 
   useEffect(() => { 
     fetchDespesas(page); 
@@ -125,8 +132,16 @@ export default function DespesasPage() {
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `Export_Despesas_${fAno}_${new Date().getTime()}.csv`);
+    link.setAttribute('download', `Export_Despesas_${fDataInicio || 'all'}_${new Date().getTime()}.csv`);
     link.click();
+  };
+
+  // Função auxiliar para exibir a string de período nos cards
+  const displayPeriodo = () => {
+    if (fDataInicio && fDataFim) return `${formatDate(fDataInicio)} a ${formatDate(fDataFim)}`;
+    if (fDataInicio) return `A partir de ${formatDate(fDataInicio)}`;
+    if (fDataFim) return `Até ${formatDate(fDataFim)}`;
+    return 'Geral';
   };
 
   return (
@@ -152,37 +167,44 @@ export default function DespesasPage() {
           </div>
         </header>
 
-        {/* CARDS */}
+        {/* CARDS COM NOVO LABEL DE PERÍODO */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <CardResumo icon={<DollarSign/>} label="Empenhado" value={resumo?.valorEmpenhado} color="amber" ano={fAno} />
-          <CardResumo icon={<Briefcase/>} label="Liquidado" value={resumo?.valorLiquidado} color="blue" ano={fAno} />
-          <CardResumo icon={<CheckCircle2/>} label="Pago" value={resumo?.valorPago} color="emerald" ano={fAno} />
+          <CardResumo icon={<DollarSign/>} label="Empenhado" value={resumo?.valorEmpenhado} color="amber" periodo={displayPeriodo()} />
+          <CardResumo icon={<Briefcase/>} label="Liquidado" value={resumo?.valorLiquidado} color="blue" periodo={displayPeriodo()} />
+          <CardResumo icon={<CheckCircle2/>} label="Pago" value={resumo?.valorPago} color="emerald" periodo={displayPeriodo()} />
         </div>
 
-        {/* FILTROS */}
+        {/* FILTROS ATUALIZADOS COM RANGE DE DATAS */}
         {showFilters && (
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6 animate-in fade-in slide-in-from-top-2">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Exercício</label>
-                <select value={fAno} onChange={(e) => { setFAno(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
-                  <option value="">Todos</option>
-                  {anos.map(a => <option key={a} value={a}>{a}</option>)}
-                </select>
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+              
+              <div className="md:col-span-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><Calendar size={12}/> Data Início</label>
+                <input type="date" value={fDataInicio} onChange={(e) => { setFDataInicio(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700" />
               </div>
+              
+              <div className="md:col-span-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><Calendar size={12}/> Data Fim</label>
+                <input type="date" value={fDataFim} onChange={(e) => { setFDataFim(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700" />
+              </div>
+
               <div className="md:col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Favorecido (Nome/CNPJ)</label>
                 <input type="text" placeholder="Buscar credor..." value={fCredor} onChange={(e) => { setFCredor(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
               </div>
-              <div>
+
+              <div className="md:col-span-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Nº Empenho</label>
                 <input type="text" placeholder="Ex: 2025/001" value={fEmpenho} onChange={(e) => { setFEmpenho(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
               </div>
-              <div className="flex justify-end">
-                <button onClick={() => {setFAno(''); setFCredor(''); setFEmpenho(''); setPage(0);}} className="px-4 py-2 text-[10px] font-bold text-red-500 uppercase flex items-center gap-1 hover:bg-red-50 rounded-lg">
+
+              <div className="flex justify-end md:col-span-1">
+                <button onClick={() => {setFDataInicio(''); setFDataFim(''); setFCredor(''); setFEmpenho(''); setFElemento(''); setPage(0);}} className="px-4 py-2 text-[10px] font-bold text-red-500 uppercase flex items-center gap-1 hover:bg-red-50 rounded-lg">
                   <X size={14} /> Limpar
                 </button>
               </div>
+
             </div>
           </div>
         )}
@@ -218,7 +240,17 @@ export default function DespesasPage() {
               </tbody>
             </table>
           </div>
-          {/* Paginação omitida para brevidade, mas deve ser mantida como no seu código anterior */}
+          
+          {/* PAGINAÇÃO */}
+          {!loading && data && data.totalElements > 0 && (
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Página {data.number + 1} de {data.totalPages} • Total: {data.totalElements}</span>
+              <div className="flex gap-2">
+                <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={data.first} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50"><ChevronLeft size={16} /></button>
+                <button onClick={() => setPage(p => Math.min(data.totalPages - 1, p + 1))} disabled={data.last} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50"><ChevronRight size={16} /></button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* MODAL DE RASTREIO (Selo Ouro) */}
@@ -261,14 +293,14 @@ export default function DespesasPage() {
   );
 }
 
-// Sub-componentes para limpeza de código
-function CardResumo({ icon, label, value, color, ano }: any) {
+// Sub-componentes atualizados
+function CardResumo({ icon, label, value, color, periodo }: any) {
   const colors: any = { amber: 'bg-amber-50 text-amber-600', blue: 'bg-blue-50 text-blue-600', emerald: 'bg-emerald-50 text-emerald-600' };
   return (
     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-transform hover:scale-[1.02]">
       <div className="flex items-center gap-3 mb-4">
         <div className={`p-2 rounded-lg ${colors[color]}`}>{icon}</div>
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total {label} ({ano || '---'})</span>
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[200px]">Total {label} ({periodo})</span>
       </div>
       <h3 className="text-2xl font-black text-slate-800">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)}</h3>
     </div>
