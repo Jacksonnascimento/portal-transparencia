@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   TrendingDown, Search, FileText, ArrowLeft, ChevronRight, Home, 
   Download, Printer, Eye, X, CheckCircle2, Clock, User
@@ -8,18 +8,28 @@ import {
 import Link from 'next/link';
 import api from '../../services/api';
 
-// --- INTERFACE ATUALIZADA PARA REFLETIR O 'DespesaPublicaDTO' DO BACKEND ---
 interface Despesa {
   exercicio: number;
-  dataEmpenho: string;
   numeroEmpenho: string;
+  numeroProcessoPagamento?: string;
+  dataEmpenho: string;
   orgaoNome: string;
+  unidadeNome?: string;
   credorNome: string;
   credorDocumento: string;
+  funcao?: string;
+  subfuncao?: string;
+  programa?: string;
+  acaoGoverno?: string;
   elementoDespesa: string;
+  fonteRecursos?: string;
+  modalidadeLicitacao?: string;
+  historicoObjetivo?: string;
   valorEmpenhado: number;
   valorLiquidado: number;
+  dataLiquidacao?: string;
   valorPago: number;
+  dataPagamento?: string;
 }
 
 export default function DespesasPage() {
@@ -36,64 +46,91 @@ export default function DespesasPage() {
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
 
-  // --- INICIALIZAÇÃO DE ANO CORRENTE ---
   const anoAtual = new Date().getFullYear().toString();
 
-  // --- FILTROS AJUSTADOS PARA OS PARÂMETROS DO BACKEND ---
   const [filtros, setFiltros] = useState({
-    ano: anoAtual,
+    ano: '', 
+    dataInicio: '', 
+    dataFim: '',    
     credor: '',
     numeroEmpenho: '',
     elementoDespesa: ''
   });
 
   const [filtrosAplicados, setFiltrosAplicados] = useState(filtros);
+  
+  const isInitialized = useRef(false);
 
-  // Busca Anos Disponíveis no Endpoint do Backend
-  useEffect(() => {
-    api.get('/portal/despesas/anos')
-       .then(res => {
-         if (res.data && res.data.length > 0) {
-            setAnosDisponiveis(res.data.map(String));
-         } else {
-            setAnosDisponiveis([anoAtual]);
-         }
-       })
-       .catch(() => setAnosDisponiveis([anoAtual]));
-  }, [anoAtual]);
-
-  const buscarDados = useCallback(async () => {
+  const buscarDados = useCallback(async (filtrosBusca = filtros, pagina = paginaAtual) => {
+    if (!filtrosBusca.ano) return; 
+    
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (filtros.ano) params.append('ano', filtros.ano);
-      if (filtros.credor) params.append('credor', filtros.credor);
-      if (filtros.numeroEmpenho) params.append('numeroEmpenho', filtros.numeroEmpenho);
-      if (filtros.elementoDespesa) params.append('elementoDespesa', filtros.elementoDespesa);
+      if (filtrosBusca.ano) params.append('ano', filtrosBusca.ano);
+      if (filtrosBusca.credor) params.append('credor', filtrosBusca.credor);
+      if (filtrosBusca.numeroEmpenho) params.append('numeroEmpenho', filtrosBusca.numeroEmpenho);
+      if (filtrosBusca.elementoDespesa) params.append('elementoDespesa', filtrosBusca.elementoDespesa);
       
-      params.append('page', paginaAtual.toString());
+      // Envia ordenação para o backend, mas reforçaremos no front para garantir
+      params.append('page', pagina.toString());
       params.append('size', '50');
       params.append('sort', 'dataEmpenho,desc');
 
-      // O resumo no backend exige apenas o 'ano'
-      const anoResumo = filtros.ano || anoAtual;
+      const anoResumo = filtrosBusca.ano;
 
       const [resLista, resResumo] = await Promise.all([
         api.get(`/portal/despesas?${params.toString()}`),
         api.get(`/portal/despesas/resumo?ano=${anoResumo}`).catch(() => ({ data: { valorEmpenhado: 0, valorPago: 0 } }))
       ]);
 
-      setDespesas(resLista.data.content || []);
-      setTotalPaginas(resLista.data.totalPages || 0); 
-      
-      // O backend retorna 'valorEmpenhado' e 'valorPago' (Mapeamento ajustado)
-      setResumo({
-        totalEmpenhado: resResumo.data.valorEmpenhado || 0,
-        totalPago: resResumo.data.valorPago || 0
+      let conteudoRecebido = resLista.data?.content || resLista.data || [];
+      conteudoRecebido = Array.isArray(conteudoRecebido) ? conteudoRecebido : [];
+
+      // --- FILTRO LOCAL POR DATAS ---
+      if (filtrosBusca.dataInicio || filtrosBusca.dataFim) {
+        conteudoRecebido = conteudoRecebido.filter((item: Despesa) => {
+          if (!item.dataEmpenho) return false;
+          
+          const dataItem = new Date(item.dataEmpenho);
+          dataItem.setUTCHours(0, 0, 0, 0); 
+
+          let passaInicio = true;
+          let passaFim = true;
+
+          if (filtrosBusca.dataInicio) {
+            const inicio = new Date(filtrosBusca.dataInicio);
+            inicio.setUTCHours(0, 0, 0, 0);
+            passaInicio = dataItem >= inicio;
+          }
+
+          if (filtrosBusca.dataFim) {
+            const fim = new Date(filtrosBusca.dataFim);
+            fim.setUTCHours(0, 0, 0, 0);
+            passaFim = dataItem <= fim;
+          }
+
+          return passaInicio && passaFim;
+        });
+      }
+
+      // --- ORDENAÇÃO DECRESCENTE GARANTIDA (DA ÚLTIMA PARA A PRIMEIRA DATA) ---
+      conteudoRecebido.sort((a: Despesa, b: Despesa) => {
+        const dataA = new Date(a.dataEmpenho || 0).getTime();
+        const dataB = new Date(b.dataEmpenho || 0).getTime();
+        return dataB - dataA; // Ordem Decrescente
       });
 
-      setFiltrosAplicados(filtros);
+      setDespesas(conteudoRecebido);
+      setTotalPaginas(resLista.data?.totalPages || 0); 
+      
+      setResumo({
+        totalEmpenhado: resResumo.data?.valorEmpenhado || 0,
+        totalPago: resResumo.data?.valorPago || 0
+      });
+
+      setFiltrosAplicados(filtrosBusca);
 
     } catch (err) {
       console.error("Erro na busca de despesas:", err);
@@ -101,15 +138,46 @@ export default function DespesasPage() {
     } finally {
       setLoading(false);
     }
-  }, [filtros, paginaAtual, anoAtual]); 
+  }, []); 
 
   useEffect(() => {
-    buscarDados();
+    if (!isInitialized.current) {
+        isInitialized.current = true;
+        
+        api.get('/portal/despesas/anos')
+           .then(res => {
+             let anos = res.data && res.data.length > 0 ? res.data.map(String) : [anoAtual];
+             anos = anos.sort((a: string, b: string) => b.localeCompare(a));
+             setAnosDisponiveis(anos);
+             
+             const anoInicial = anos.includes(anoAtual) ? anoAtual : anos[0];
+             
+             setFiltros(prev => {
+                const newFiltros = { ...prev, ano: anoInicial };
+                buscarDados(newFiltros, 0); 
+                return newFiltros;
+             });
+           })
+           .catch(() => {
+             setAnosDisponiveis([anoAtual]);
+             setFiltros(prev => {
+                const newFiltros = { ...prev, ano: anoAtual };
+                buscarDados(newFiltros, 0);
+                return newFiltros;
+             });
+           });
+    }
+  }, [anoAtual, buscarDados]);
+
+  useEffect(() => {
+    if (isInitialized.current && filtros.ano) {
+        buscarDados(filtros, paginaAtual);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginaAtual]); 
 
   const handlePesquisar = () => {
-    if (paginaAtual === 0) buscarDados();
+    if (paginaAtual === 0) buscarDados(filtros, 0);
     else setPaginaAtual(0); 
   };
 
@@ -117,8 +185,12 @@ export default function DespesasPage() {
     setIsExporting(true);
     try {
       const params = new URLSearchParams();
-      params.append('formato', formato); // O backend usa ?formato=pdf
+      params.append('formato', formato);
+      
+      // INCLUSÃO DE TODOS OS FILTROS PARA A ROTA DE EXPORTAÇÃO
       if (filtrosAplicados.ano) params.append('ano', filtrosAplicados.ano);
+      if (filtrosAplicados.dataInicio) params.append('dataInicio', filtrosAplicados.dataInicio);
+      if (filtrosAplicados.dataFim) params.append('dataFim', filtrosAplicados.dataFim);
       if (filtrosAplicados.credor) params.append('credor', filtrosAplicados.credor);
       if (filtrosAplicados.numeroEmpenho) params.append('numeroEmpenho', filtrosAplicados.numeroEmpenho);
       if (filtrosAplicados.elementoDespesa) params.append('elementoDespesa', filtrosAplicados.elementoDespesa);
@@ -130,7 +202,7 @@ export default function DespesasPage() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `despesas_${filtrosAplicados.ano || 'geral'}.${formato}`);
+      link.setAttribute('download', `despesas_${filtrosAplicados.ano}_export.${formato}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -148,16 +220,15 @@ export default function DespesasPage() {
     if (!date) return '---';
     if (Array.isArray(date)) return `${String(date[2]).padStart(2, '0')}/${String(date[1]).padStart(2, '0')}/${date[0]}`;
     const parsed = new Date(date);
-    return parsed.toLocaleDateString('pt-BR', {timeZone: 'UTC'}); // Forçando UTC pra evitar bugs de fuso
+    return parsed.toLocaleDateString('pt-BR', {timeZone: 'UTC'}); 
   };
 
-  // Mantido seguro contra undefined
   const mascararDocumento = (doc: string) => {
     if (!doc || doc === '---') return '---';
     const limpo = doc.replace(/\D/g, '');
     if (limpo.length === 11) return `${limpo.substring(0, 3)}.***.***-${limpo.substring(9, 11)}`;
     if (limpo.length === 14) return `${limpo.substring(0, 2)}.***.***/****-${limpo.substring(12, 14)}`;
-    return doc; // O backend já pode estar devolvendo mascarado para pessoa física
+    return doc; 
   };
 
   const getStatusPagamento = (item: Despesa) => {
@@ -189,10 +260,10 @@ export default function DespesasPage() {
         </div>
         
         <div className="flex gap-2">
-          <button onClick={() => handleExport('pdf')} disabled={isExporting} className="bg-white p-3 rounded-xl border border-slate-200 text-slate-500 hover:text-black hover:shadow-md transition-all disabled:opacity-50" title="Exportar PDF">
+          <button onClick={() => handleExport('pdf')} disabled={isExporting} className="bg-white p-3 rounded-xl border border-slate-200 text-slate-500 hover:text-black hover:shadow-md transition-all disabled:opacity-50" title="Exportar PDF com Filtros">
             <Printer size={18} className={isExporting ? "animate-pulse" : ""} />
           </button>
-          <button onClick={() => handleExport('csv')} disabled={isExporting} className="bg-white p-3 rounded-xl border border-slate-200 text-slate-500 hover:text-black hover:shadow-md transition-all disabled:opacity-50" title="Exportar CSV">
+          <button onClick={() => handleExport('csv')} disabled={isExporting} className="bg-white p-3 rounded-xl border border-slate-200 text-slate-500 hover:text-black hover:shadow-md transition-all disabled:opacity-50" title="Exportar CSV com Filtros">
             <Download size={18} className={isExporting ? "animate-pulse" : ""} />
           </button>
         </div>
@@ -213,20 +284,25 @@ export default function DespesasPage() {
       </div>
 
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-3 items-end">
           <FilterBox label="Exercício">
             <select value={filtros.ano} onChange={(e) => setFiltros({...filtros, ano: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none cursor-pointer">
-              <option value="">Todos os Anos</option>
               {anosDisponiveis.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </FilterBox>
-          <FilterBox label="Nome do Credor">
+          <FilterBox label="Data Início">
+            <input type="date" value={filtros.dataInicio} onChange={(e) => setFiltros({...filtros, dataInicio: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none cursor-pointer" />
+          </FilterBox>
+          <FilterBox label="Data Fim">
+            <input type="date" value={filtros.dataFim} onChange={(e) => setFiltros({...filtros, dataFim: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none cursor-pointer" />
+          </FilterBox>
+          <FilterBox label="Credor">
             <input type="text" placeholder="Ex: Construtora..." value={filtros.credor} onChange={(e) => setFiltros({...filtros, credor: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none placeholder:text-slate-300" />
           </FilterBox>
           <FilterBox label="Nº Empenho">
             <input type="text" placeholder="Ex: 2024/123" value={filtros.numeroEmpenho} onChange={(e) => setFiltros({...filtros, numeroEmpenho: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none placeholder:text-slate-300" />
           </FilterBox>
-          <FilterBox label="Elemento de Despesa">
+          <FilterBox label="Elem. Despesa">
             <input type="text" placeholder="Ex: 3.3.90..." value={filtros.elementoDespesa} onChange={(e) => setFiltros({...filtros, elementoDespesa: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none placeholder:text-slate-300" />
           </FilterBox>
           <button onClick={handlePesquisar} className="bg-slate-900 text-white h-[46px] rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[var(--cor-primaria)] transition-colors shadow-md flex items-center justify-center gap-2">
@@ -243,26 +319,25 @@ export default function DespesasPage() {
                 <th scope="col" className="px-6 py-4">Empenho / Data</th>
                 <th scope="col" className="px-6 py-4">Favorecido (Credor)</th>
                 <th scope="col" className="px-6 py-4">Fase Atual</th>
-                <th scope="col" className="px-6 py-4 text-right">Valor Empenhado</th>
+                <th scope="col" className="px-6 py-4 text-right">Ciclo Financeiro (R$)</th>
                 <th scope="col" className="px-6 py-4 text-center">Ficha</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={5} className="py-16 text-center font-bold text-slate-400 animate-pulse text-sm uppercase tracking-widest">Carregando base de dados...</td></tr>
+                <tr><td colSpan={5} className="py-16 text-center font-bold text-slate-400 animate-pulse text-sm uppercase tracking-widest">Buscando despesas...</td></tr>
               ) : despesas.length === 0 ? (
                  <tr><td colSpan={5} className="py-12 text-center text-slate-500 text-sm">Nenhuma despesa encontrada para os filtros selecionados.</td></tr>
               ) : despesas.map((item, i) => {
                 const status = getStatusPagamento(item);
                 return (
-                  // Usando o index como key fallback, já que o DTO do backend não expõe o ID interno (segurança)
                   <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-bold text-slate-900 text-xs whitespace-nowrap">{item.numeroEmpenho}</div>
                       <div className="text-[10px] font-mono text-slate-500 mt-1">{formatDate(item.dataEmpenho)}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-xs font-black text-slate-800 uppercase truncate max-w-[300px]" title={item.credorNome}>{item.credorNome}</div>
+                      <div className="text-xs font-black text-slate-800 uppercase truncate max-w-[280px]" title={item.credorNome}>{item.credorNome}</div>
                       <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide mt-0.5">
                         {mascararDocumento(item.credorDocumento)}
                       </div>
@@ -272,8 +347,16 @@ export default function DespesasPage() {
                         {status.icon} {status.text}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right font-semibold text-slate-500 text-sm whitespace-nowrap">
-                      {formatMoney(item.valorEmpenhado)}
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <div className="text-[10px] font-bold text-slate-500 flex justify-end gap-2" title="Valor Empenhado">
+                        <span className="opacity-70">Empenhado:</span> <span>{formatMoney(item.valorEmpenhado)}</span>
+                      </div>
+                      <div className="text-[10px] font-bold text-amber-600 flex justify-end gap-2 mt-0.5" title="Valor Liquidado">
+                        <span className="opacity-70">Liquidado:</span> <span>{formatMoney(item.valorLiquidado)}</span>
+                      </div>
+                      <div className="text-[10px] font-black text-emerald-600 flex justify-end gap-2 mt-0.5" title="Valor Efetivamente Pago">
+                        <span className="opacity-70">Pago:</span> <span>{formatMoney(item.valorPago)}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <button 
@@ -316,7 +399,6 @@ export default function DespesasPage() {
         )}
       </div>
 
-      {/* MODAL MANTIDO COM A MESMA ESTRUTURA E ESTILO VISUAL */}
       {isModalOpen && selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsModalOpen(false)}>
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
@@ -326,13 +408,13 @@ export default function DespesasPage() {
                 <div className="bg-white/20 p-2.5 rounded-xl" aria-hidden="true"><FileText size={20}/></div>
                 <div>
                   <h2 id="modal-title" className="text-lg font-black uppercase tracking-tight leading-none italic">Ficha da Despesa</h2>
-                  <p className="text-white/80 text-[9px] font-bold uppercase mt-1 tracking-widest">Empenho Nº {selected.numeroEmpenho}</p>
+                  <p className="text-white/80 text-[9px] font-bold uppercase mt-1 tracking-widest">Empenho Nº {selected.numeroEmpenho} / {selected.exercicio}</p>
                 </div>
               </div>
               <button aria-label="Fechar Modal" onClick={() => setIsModalOpen(false)} className="bg-white/20 p-2 rounded-full hover:bg-white/40 transition-colors focus:outline-none focus:ring-2 focus:ring-white"><X size={18} /></button>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-6">
+            <div className="p-5 overflow-y-auto space-y-5">
               
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex gap-4 items-center">
                 <div className="bg-slate-200 p-3 rounded-full text-slate-500 shrink-0"><User size={24}/></div>
@@ -343,15 +425,42 @@ export default function DespesasPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <DetailField label="Órgão Solicitante" value={selected.orgaoNome} />
-                  <DetailField label="Elemento de Despesa" value={selected.elementoDespesa} />
-                </div>
-                <div className="space-y-4">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                  Histórico / Objeto da Despesa
+                </h3>
+                <p className="text-xs text-slate-700 font-medium leading-relaxed italic">
+                  {selected.historicoObjetivo || 'Nenhum detalhamento informado para este empenho.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
                   <DetailField label="Data do Empenho" value={formatDate(selected.dataEmpenho)} />
-                  {/* Fonte de Recurso não é retornada na DTO do Backend, exibindo valor padrão transparente */}
-                  <DetailField label="Fonte de Recurso" value="---" />
+                  <DetailField 
+                    label="Data da Liquidação" 
+                    value={selected.dataLiquidacao ? formatDate(selected.dataLiquidacao) : (selected.valorLiquidado > 0 ? 'Não informada' : 'Aguardando')} 
+                  />
+                  <DetailField 
+                    label="Data do Pagamento" 
+                    value={selected.dataPagamento ? formatDate(selected.dataPagamento) : (selected.valorPago > 0 ? 'Não informada' : 'Aguardando')} 
+                  />
+                  <DetailField label="Processo de Pagamento" value={selected.numeroProcessoPagamento || '---'} />
+                  <div className="sm:col-span-2">
+                    <DetailField label="Modalidade Licitatória" value={selected.modalidadeLicitacao || '---'} />
+                  </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Classificação Orçamentária
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DetailField label="Órgão" value={selected.orgaoNome} />
+                  <DetailField label="Unidade Orçamentária" value={selected.unidadeNome || '---'} />
+                  <DetailField label="Função / Subfunção" value={selected.funcao && selected.subfuncao ? `${selected.funcao} / ${selected.subfuncao}` : '---'} />
+                  <DetailField label="Programa / Ação" value={selected.programa && selected.acaoGoverno ? `${selected.programa} / ${selected.acaoGoverno}` : '---'} />
+                  <DetailField label="Natureza da Despesa" value={selected.elementoDespesa} />
+                  <DetailField label="Fonte de Recurso" value={selected.fonteRecursos || '---'} />
                 </div>
               </div>
 
