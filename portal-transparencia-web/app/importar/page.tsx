@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { ImportarReceitas } from '@/components/importar/ImportarReceitas';
+import { ImportarDespesas } from '@/components/importar/ImportarDespesas';
 import { ImportarDividaAtiva } from '@/components/importar/ImportarDividaAtiva';
 import { 
   TrendingUp, 
@@ -34,7 +35,6 @@ export default function ImportarPage() {
             <TrendingUp size={16} /> Receitas
           </button>
           
-          {/* NOVA ABA: DÍVIDA ATIVA */}
           <button onClick={() => setActiveTab('divida')} className={tabClass('divida')}>
             <Scale size={16} /> Dívida Ativa
           </button>
@@ -56,7 +56,10 @@ export default function ImportarPage() {
           {activeTab === 'receitas' && <ImportarReceitas />}
           {activeTab === 'divida' && <ImportarDividaAtiva />}
           
-          {activeTab === 'despesas' && <EmptyState title="Módulo de Despesas" desc="A importação de empenhos estará disponível na próxima atualização." icon={<TrendingDown size={48} className="text-slate-300 mb-4" />} />}
+          {/* ATUALIZADO: Agora renderiza o componente real de importação de despesas */}
+          {activeTab === 'despesas' && <ImportarDespesas />}
+          
+          {/* Módulos ainda não implementados permanecem com EmptyState */}
           {activeTab === 'folha' && <EmptyState title="Módulo de Pessoal" desc="A importação da folha de pagamento está em desenvolvimento." icon={<Users size={48} className="text-slate-300 mb-4" />} />}
           {activeTab === 'contratos' && <EmptyState title="Licitações e Contratos" desc="Módulo destinado à carga de processos licitatórios." icon={<FileText size={48} className="text-slate-300 mb-4" />} />}
         </div>

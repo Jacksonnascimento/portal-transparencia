@@ -88,7 +88,14 @@ const RenderizadorJSON = ({ data }: { data?: string }) => {
   }
 };
 
-// --- MAPA DINÂMICO DE AÇÕES POR ENTIDADE ---
+// --- MAPAS DE CONFIGURAÇÃO DINÂMICA ---
+const ENTIDADE_PARA_ROTA: Record<string, string> = {
+  "RECEITA": "receitas",
+  "DESPESA": "despesas",
+  "DIVIDA_ATIVA": "divida-ativa"
+};
+
+// CORREÇÃO 1: Padronizamos os values para evitar duplicatas e buscas vazias
 const ACOES_POR_ENTIDADE: Record<string, { value: string, label: string }[]> = {
   "CONFIGURACAO": [
     { value: "ATUALIZACAO", label: "ATUALIZAÇÃO" },
@@ -97,25 +104,28 @@ const ACOES_POR_ENTIDADE: Record<string, { value: string, label: string }[]> = {
   "USUARIO": [
     { value: "CRIACAO", label: "CRIAÇÃO" },
     { value: "ATUALIZACAO", label: "ATUALIZAÇÃO" },
-    { value: "ALTERACAO_SENHA", label: "ALTERAÇÃO DE SENHA" },
-    { value: "ALTERACAO_STATUS", label: "ALTERAÇÃO DE STATUS" }
+    { value: "ALTERACAO_SENHA", label: "ALTERAÇÃO DE SENHA" }
   ],
   "RECEITA": [
     { value: "IMPORTACAO_LOTE_CSV", label: "IMPORTAÇÃO (CSV)" },
-    { value: "EXCLUSAO_LOTE_RECEITA", label: "EXCLUSÃO / ROLLBACK" }
+    { value: "EXCLUSAO_LOTE", label: "EXCLUSÃO / ROLLBACK" }
   ],
   "DESPESA": [
     { value: "IMPORTACAO_LOTE_CSV", label: "IMPORTAÇÃO (CSV)" },
-    { value: "EXCLUSAO_LOTE_DESPESA", label: "EXCLUSÃO / ROLLBACK" }
+    { value: "EXCLUSAO_LOTE", label: "EXCLUSÃO / ROLLBACK" }
+  ],
+  "DIVIDA_ATIVA": [
+    { value: "IMPORTACAO_LOTE_CSV", label: "IMPORTAÇÃO (CSV)" },
+    { value: "EXCLUSAO_LOTE", label: "EXCLUSÃO / ROLLBACK" }
   ]
 };
 
-// Gera a lista de todas as ações únicas para quando "TODAS AS ENTIDADES" estiver selecionada
+// CORREÇÃO 2: Removemos duplicatas baseadas no LABEL para quando nenhuma entidade está selecionada
 const TODAS_ACOES = Array.from(
   new Map(
     Object.values(ACOES_POR_ENTIDADE)
       .flat()
-      .map(item => [item.value, item])
+      .map(item => [item.label, item]) // O Map substitui chaves iguais, limpando as duplicatas de rótulo
   ).values()
 );
 
@@ -125,32 +135,28 @@ export default function AuditoriaPage() {
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   
-  // Filtros
   const [filtroAcao, setFiltroAcao] = useState('');
   const [filtroEntidade, setFiltroEntidade] = useState('');
   const [filtroUsuario, setFiltroUsuario] = useState('');
 
   const [selectedLog, setSelectedLog] = useState<LogAuditoria | null>(null);
-  const [loteParaExcluir, setLoteParaExcluir] = useState<string | null>(null);
+  const [logParaReverter, setLogParaReverter] = useState<LogAuditoria | null>(null);
 
-  // Limpa o filtro de ação se a entidade mudar e a ação selecionada não for compatível
   useEffect(() => {
     if (filtroEntidade) {
       const acoesValidas = ACOES_POR_ENTIDADE[filtroEntidade]?.map(a => a.value) || [];
-      if (filtroAcao && !acoesValidas.includes(filtroAcao)) {
-        setFiltroAcao('');
-      }
+      if (filtroAcao && !acoesValidas.includes(filtroAcao)) setFiltroAcao('');
     }
   }, [filtroEntidade, filtroAcao]);
 
-  const fetchLogs = useCallback(async (pageNumber: number, acao = filtroAcao, entidade = filtroEntidade, usuario = filtroUsuario) => {
+  const fetchLogs = useCallback(async (pageNumber: number) => {
     setLoading(true);
     setError(null);
     try {
       let url = `/auditoria?page=${pageNumber}&size=20&sort=dataHora,desc`;
-      if (acao) url += `&acao=${acao}`;
-      if (entidade) url += `&entidade=${entidade}`;
-      if (usuario) url += `&usuarioNome=${usuario}`;
+      if (filtroAcao) url += `&acao=${filtroAcao}`;
+      if (filtroEntidade) url += `&entidade=${filtroEntidade}`;
+      if (filtroUsuario) url += `&usuarioNome=${filtroUsuario}`;
 
       const response = await api.get(url);
       setData(response.data);
@@ -166,14 +172,14 @@ export default function AuditoriaPage() {
 
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchLogs(0); // Volta pra primeira página ao filtrar
+    fetchLogs(0);
   };
 
   const limparFiltros = () => {
     setFiltroAcao('');
     setFiltroEntidade('');
     setFiltroUsuario('');
-    fetchLogs(0, '', '', '');
+    fetchLogs(0);
   };
 
   const formatDate = (val: any) => {
@@ -188,21 +194,20 @@ export default function AuditoriaPage() {
       let parsed = JSON.parse(jsonString);
       if (typeof parsed === 'string') parsed = JSON.parse(parsed);
       return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   };
 
-  // CORREÇÃO CRÍTICA AQUI: Adicionado Optional Chaining para não estourar null pointer
   const lotesJaExcluidos = new Set(
-    data?.content?.filter((l: LogAuditoria) => l.acao === 'EXCLUSAO_LOTE_RECEITA').map((l: LogAuditoria) => l.entidadeId) || []
+    data?.content?.filter((l: LogAuditoria) => l.acao.includes('EXCLUSAO_LOTE')).map((l: LogAuditoria) => l.entidadeId) || []
   );
 
   const confirmarDesfazer = async () => {
-    if (!loteParaExcluir) return;
+    if (!logParaReverter) return;
     try {
-      await api.delete(`/receitas/lote/${loteParaExcluir}`);
-      setLoteParaExcluir(null);
+      const rota = ENTIDADE_PARA_ROTA[logParaReverter.entidade];
+      await api.delete(`/${rota}/lote/${logParaReverter.entidadeId}`);
+      
+      setLogParaReverter(null);
       fetchLogs(0);
       alert("Lote revogado com sucesso.");
     } catch (err: any) {
@@ -215,7 +220,6 @@ export default function AuditoriaPage() {
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] text-slate-900 font-sans text-sm">
       <Sidebar />
-      
       <main className="flex-1 p-6 overflow-y-auto relative z-0">
         <header className="flex items-center justify-between mb-8">
           <div>
@@ -228,48 +232,34 @@ export default function AuditoriaPage() {
           </div>
         </header>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-center border border-red-200">
-            <AlertCircle className="mr-2" size={20} /> {error}
-          </div>
-        )}
+        {error && <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-center border border-red-200"><AlertCircle className="mr-2" size={20} /> {error}</div>}
 
-        {/* --- BARRA DE FILTROS --- */}
         <form onSubmit={handleFilter} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[180px]">
             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Filtrar por Entidade</label>
-            <select value={filtroEntidade} onChange={(e) => setFiltroEntidade(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:border-black">
+            <select value={filtroEntidade} onChange={(e) => setFiltroEntidade(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
               <option value="">TODAS AS ENTIDADES</option>
               <option value="CONFIGURACAO">CONFIGURAÇÕES</option>
               <option value="USUARIO">USUÁRIOS</option>
               <option value="RECEITA">RECEITAS</option>
               <option value="DESPESA">DESPESAS</option>
+              <option value="DIVIDA_ATIVA">DÍVIDA ATIVA</option>
             </select>
           </div>
           <div className="flex-1 min-w-[180px]">
             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Filtrar por Ação</label>
-            <select value={filtroAcao} onChange={(e) => setFiltroAcao(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:border-black disabled:opacity-50">
+            <select value={filtroAcao} onChange={(e) => setFiltroAcao(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
               <option value="">TODAS AS AÇÕES</option>
-              {acoesDisponiveis.map(acao => (
-                <option key={acao.value} value={acao.value}>{acao.label}</option>
-              ))}
+              {acoesDisponiveis.map(acao => (<option key={acao.label} value={acao.value}>{acao.label}</option>))}
             </select>
           </div>
           <div className="flex-1 min-w-[180px]">
             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Filtrar por Operador</label>
-            <input 
-              type="text" 
-              placeholder="Nome do usuário..." 
-              value={filtroUsuario} 
-              onChange={(e) => setFiltroUsuario(e.target.value)} 
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:border-black placeholder:text-slate-400 font-medium"
-            />
+            <input type="text" placeholder="Nome do usuário..." value={filtroUsuario} onChange={(e) => setFiltroUsuario(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700" />
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={limparFiltros} className="px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs uppercase hover:bg-slate-200 transition-colors">Limpar</button>
-            <button type="submit" className="px-6 py-2 bg-black text-white font-bold rounded-lg text-xs uppercase hover:bg-slate-800 transition-colors shadow-md flex items-center gap-2">
-              <Search size={14} /> Aplicar Filtros
-            </button>
+            <button type="button" onClick={limparFiltros} className="px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs uppercase">Limpar</button>
+            <button type="submit" className="px-6 py-2 bg-black text-white font-bold rounded-lg text-xs uppercase shadow-md flex items-center gap-2"><Search size={14} /> Aplicar Filtros</button>
           </div>
         </form>
 
@@ -286,11 +276,7 @@ export default function AuditoriaPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {loading ? (
-                  [...Array(5)].map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={5} className="px-6 py-6 bg-slate-50/20"></td></tr>)
-                ) : data?.content.length === 0 ? (
-                  <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhum registro encontrado</td></tr>
-                ) : (
+                {loading ? ([...Array(5)].map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={5} className="px-6 py-6 bg-slate-50/20"></td></tr>)) : data?.content.length === 0 ? (<tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhum registro encontrado</td></tr>) : (
                   data?.content.map((log) => (
                     <tr key={log.id} onClick={() => setSelectedLog(log)} className="hover:bg-slate-50 transition-colors text-xs group cursor-pointer">
                       <td className="px-6 py-4 text-slate-500 font-mono font-semibold">{formatDate(log.dataHora)}</td>
@@ -299,25 +285,15 @@ export default function AuditoriaPage() {
                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border w-max ${
                           log.acao.includes("IMPORTACAO") ? "bg-blue-100 text-blue-700 border-blue-200" : 
                           log.acao.includes("EXCLUSAO") ? "bg-red-100 text-red-700 border-red-200" : "bg-slate-100 text-slate-700 border-slate-200"
-                        }`}>
-                          {log.acao}
-                        </span>
+                        }`}>{log.acao}</span>
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{log.entidade}</span>
                       </td>
                       <td className="px-6 py-4 font-bold text-slate-500 font-mono text-[11px]">{log.entidadeId}</td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex justify-center gap-2">
-                          <button className="p-1.5 text-slate-300 hover:text-black rounded transition-all" title="Ver Detalhes">
-                            <Eye size={18} />
-                          </button>
+                          <button className="p-1.5 text-slate-300 hover:text-black rounded transition-all" title="Ver Detalhes"><Eye size={18} /></button>
                           {log.acao === "IMPORTACAO_LOTE_CSV" && !lotesJaExcluidos.has(log.entidadeId) && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setLoteParaExcluir(log.entidadeId); }}
-                              className="p-1.5 text-red-300 hover:text-red-600 rounded transition-all"
-                              title="Desfazer Importação"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setLogParaReverter(log); }} className="p-1.5 text-red-300 hover:text-red-600 rounded transition-all" title="Desfazer Importação"><Trash2 size={18} /></button>
                           )}
                         </div>
                       </td>
@@ -330,29 +306,19 @@ export default function AuditoriaPage() {
           
           {!loading && data && data.content.length > 0 && (
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                Página {data.number + 1} de {data.totalPages} • Total: {data.totalElements} logs
-              </span>
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Página {data.number + 1} de {data.totalPages} • Total: {data.totalElements} logs</span>
               <div className="flex gap-2">
-                <button onClick={(e) => { e.stopPropagation(); setPage(0); }} disabled={data.first} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50" title="Primeira Página">
-                  <ChevronsLeft size={16} />
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); setPage(p => Math.max(0, p - 1)); }} disabled={data.first} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50" title="Página Anterior">
-                  <ChevronLeft size={16} />
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); setPage(p => Math.min(data.totalPages - 1, p + 1)); }} disabled={data.last} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50" title="Próxima Página">
-                  <ChevronRight size={16} />
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); setPage(data.totalPages - 1); }} disabled={data.last} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50" title="Última Página">
-                  <ChevronsRight size={16} />
-                </button>
+                <button onClick={(e) => { e.stopPropagation(); setPage(0); }} disabled={data.first} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50"><ChevronsLeft size={16} /></button>
+                <button onClick={(e) => { e.stopPropagation(); setPage(p => Math.max(0, p - 1)); }} disabled={data.first} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50"><ChevronLeft size={16} /></button>
+                <button onClick={(e) => { e.stopPropagation(); setPage(p => Math.min(data.totalPages - 1, p + 1)); }} disabled={data.last} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50"><ChevronRight size={16} /></button>
+                <button onClick={(e) => { e.stopPropagation(); setPage(data.totalPages - 1); }} disabled={data.last} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50"><ChevronsRight size={16} /></button>
               </div>
             </div>
           )}
         </div>
       </main>
 
-      {/* --- MODAL DE DETALHES DA AUDITORIA --- */}
+      {/* --- MODAL DE DETALHES --- */}
       {selectedLog && (
         <ModalPortal>
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -368,33 +334,35 @@ export default function AuditoriaPage() {
                     <span className="text-slate-500 ml-2">ID / Registro: {selectedLog.entidadeId}</span>
                   </div>
                 </div>
-                <button onClick={() => setSelectedLog(null)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
-                  <X size={24} />
-                </button>
+                <button onClick={() => setSelectedLog(null)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50"><X size={24} /></button>
               </div>
               
               <div className="p-8 overflow-y-auto bg-white flex-1">
-                {selectedLog.acao === "EXCLUSAO_LOTE_RECEITA" && selectedLog.dadosAnteriores ? (
+                {selectedLog.acao.includes("EXCLUSAO_LOTE") && selectedLog.dadosAnteriores ? (
                   <div className="space-y-4">
-                    <h4 className="text-xs font-bold text-red-700 uppercase tracking-widest border-l-4 border-red-600 pl-3">Itens Revogados do Sistema</h4>
+                    <h4 className="text-xs font-bold text-red-700 uppercase tracking-widest border-l-4 border-red-600 pl-3 italic">Itens Revogados do Sistema</h4>
                     <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                       <table className="w-full text-[10px] text-left">
                         <thead className="bg-slate-50 font-bold text-slate-500 uppercase border-b border-slate-200">
                           <tr>
-                            <th className="p-3">Exercício</th>
-                            <th className="p-3">Data Lanç.</th>
-                            <th className="p-3">Origem</th>
-                            <th className="p-3 text-right">Valor Arrecadado</th>
+                            <th className="p-3">Exercício / Ano</th>
+                            <th className="p-3">Detalhe / Origem</th>
+                            <th className="p-3 text-right">Valor</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                           {parseDadosExcluidos(selectedLog.dadosAnteriores).map((item: any, idx: number) => (
                             <tr key={idx} className="hover:bg-red-50/30">
-                              <td className="p-3">{item.exercicio}</td>
-                              <td className="p-3 font-mono">{formatDate(item.dataLancamento)}</td>
-                              <td className="p-3 font-bold">{item.origem}</td>
+                              <td className="p-3">{item.exercicio || item.anoInscricao || '---'}</td>
+                              <td className="p-3 font-bold">
+                                {item.origem || item.nomeDevedor || item.numeroEmpenho || '---'}
+                                <span className="block text-[8px] text-slate-400 font-normal uppercase">
+                                  {item.razaoSocial || item.tipoDivida || ''}
+                                </span>
+                              </td>
                               <td className="p-3 text-right font-black text-red-600">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valorArrecadado)}
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                                  .format(item.valorArrecadado || item.valorTotalDivida || item.valorEmpenhado || 0)}
                               </td>
                             </tr>
                           ))}
@@ -404,33 +372,9 @@ export default function AuditoriaPage() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Renderização do JSON Novo/Atualizado */}
                     <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                      <h4 className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
-                        <CheckCircle size={14}/> Dados Registrados
-                      </h4>
+                      <h4 className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-slate-200 pb-2"><CheckCircle size={14}/> Dados Registrados</h4>
                       <RenderizadorJSON data={selectedLog.dadosNovos} />
-                    </div>
-
-                    {/* Mostrar Dados Anteriores se for uma Atualização */}
-                    {selectedLog.acao.includes("ATUALIZACAO") && selectedLog.dadosAnteriores && (
-                      <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mt-6">
-                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
-                          <History size={14}/> Estado Anterior
-                        </h4>
-                        <RenderizadorJSON data={selectedLog.dadosAnteriores} />
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4 mt-6">
-                       <div className="p-4 bg-white border border-slate-100 rounded-lg shadow-sm">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">IP de Origem</span>
-                          <span className="font-mono text-xs font-bold">{selectedLog.ipOrigem}</span>
-                       </div>
-                       <div className="p-4 bg-white border border-slate-100 rounded-lg shadow-sm">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Data do Evento</span>
-                          <span className="font-mono text-xs font-bold">{formatDate(selectedLog.dataHora)}</span>
-                       </div>
                     </div>
                   </div>
                 )}
@@ -444,22 +388,19 @@ export default function AuditoriaPage() {
         </ModalPortal>
       )}
 
-      {/* --- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO --- */}
-      {loteParaExcluir && (
+      {/* --- CONFIRMAÇÃO DE EXCLUSÃO --- */}
+      {logParaReverter && (
         <ModalPortal>
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border-4 border-slate-900 overflow-hidden animate-in zoom-in-95 duration-200">
-              <div className="bg-slate-900 p-4 text-white font-bold text-xs uppercase flex items-center gap-2 tracking-widest">
-                <AlertTriangle className="text-yellow-400" size={18} /> Confirmar Revogação Crítica
-              </div>
-              <div className="p-8 text-center bg-white">
-                <p className="text-sm font-bold mb-4 uppercase text-slate-600">Deseja apagar permanentemente o lote:</p>
-                <div className="bg-red-50 p-4 rounded-xl font-mono font-black text-red-600 text-xl border-2 border-red-200 mb-4 shadow-inner">{loteParaExcluir}</div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase leading-tight italic">Esta ação não pode ser desfeita e removerá todos os lançamentos financeiros vinculados.</p>
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border-4 border-slate-900 overflow-hidden animate-in zoom-in-95 duration-200 text-center">
+              <div className="bg-slate-900 p-4 text-white font-bold text-xs uppercase flex items-center justify-center gap-2 tracking-widest"><AlertTriangle className="text-yellow-400" size={18} /> Revogação Crítica</div>
+              <div className="p-8">
+                <p className="text-sm font-bold mb-4 uppercase text-slate-600">Deseja apagar o lote de {logParaReverter.entidade}:</p>
+                <div className="bg-red-50 p-4 rounded-xl font-mono font-black text-red-600 text-xl border-2 border-red-200 mb-4">{logParaReverter.entidadeId}</div>
               </div>
               <div className="p-4 bg-slate-50 flex gap-3 border-t border-slate-100">
-                <button onClick={() => setLoteParaExcluir(null)} className="flex-1 px-4 py-2 border-2 border-slate-900 text-slate-900 font-bold rounded-lg text-xs uppercase hover:bg-white transition-colors">Cancelar</button>
-                <button onClick={confirmarDesfazer} className="flex-1 px-4 py-2 bg-red-600 text-white font-bold rounded-lg text-xs uppercase hover:bg-red-700 shadow-xl transition-all active:scale-95">Sim, Revogar Lote</button>
+                <button onClick={() => setLogParaReverter(null)} className="flex-1 px-4 py-2 border-2 border-slate-900 text-slate-900 font-bold rounded-lg text-xs uppercase">Cancelar</button>
+                <button onClick={confirmarDesfazer} className="flex-1 px-4 py-2 bg-red-600 text-white font-bold rounded-lg text-xs uppercase hover:bg-red-700 transition-all">Sim, Revogar Lote</button>
               </div>
             </div>
           </div>

@@ -1,12 +1,6 @@
 -- 1. Tabela de Credores
-CREATE TABLE IF NOT EXISTS tb_credor (
-    id BIGSERIAL PRIMARY KEY,
-    cpf_cnpj VARCHAR(14) NOT NULL UNIQUE, 
-    razao_social VARCHAR(255) NOT NULL,
-    tipo_pessoa VARCHAR(10) CHECK (tipo_pessoa IN ('FISICA', 'JURIDICA'))
-);
 
--- 2. Tabela de Receitas
+/*
 CREATE TABLE IF NOT EXISTS tb_receita (
     id BIGSERIAL PRIMARY KEY,
     exercicio INT NOT NULL,
@@ -27,11 +21,21 @@ CREATE TABLE IF NOT EXISTS tb_receita (
     id_importacao VARCHAR(255)
 );
 
--- 3. Tabela de Despesas
+*/
+
+CREATE TABLE IF NOT EXISTS tb_credor (
+    id BIGSERIAL PRIMARY KEY,
+    cpf_cnpj VARCHAR(14) NOT NULL UNIQUE, 
+    razao_social VARCHAR(255) NOT NULL,
+    tipo_pessoa VARCHAR(10) CHECK (tipo_pessoa IN ('FISICA', 'JURIDICA'))
+);
+
+
+
 CREATE TABLE IF NOT EXISTS tb_despesa (
     id BIGSERIAL PRIMARY KEY,
     exercicio INT NOT NULL,
-    numero_empenho VARCHAR(20) NOT NULL,
+    numero_empenho VARCHAR(50) NOT NULL, -- Aumentei para 50 para garantir formatos complexos (ex: 2025/0001-A)
     data_empenho DATE NOT NULL,
     orgao_codigo VARCHAR(10),
     orgao_nome VARCHAR(255),
@@ -44,19 +48,23 @@ CREATE TABLE IF NOT EXISTS tb_despesa (
     elemento_despesa VARCHAR(100),
     fonte_recursos VARCHAR(100),
     
-    -- VINCULO COM CREDOR (CORRIGIDO PARA BIGINT)
     credor_id BIGINT REFERENCES tb_credor(id),
     
     valor_empenhado DECIMAL(19,2) DEFAULT 0,
     valor_liquidado DECIMAL(19,2) DEFAULT 0,
+    data_liquidacao DATE, -- NOVO
     valor_pago DECIMAL(19,2) DEFAULT 0,
+    data_pagamento DATE, -- NOVO
     historico_objetivo TEXT, 
-    modalidade_licitacao VARCHAR(100) 
+    modalidade_licitacao VARCHAR(100),
+
+    -- Trilha de Auditoria e Rollback --
+    data_importacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id_importacao VARCHAR(255)
 );
 
--- Índices
-CREATE INDEX idx_receita_exercicio ON tb_receita(exercicio);
 CREATE INDEX idx_despesa_exercicio ON tb_despesa(exercicio);
+CREATE INDEX idx_despesa_empenho ON tb_despesa(numero_empenho);
 CREATE INDEX idx_despesa_credor ON tb_despesa(credor_id);
 
 
