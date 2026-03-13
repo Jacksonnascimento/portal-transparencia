@@ -28,6 +28,9 @@ public class DespesaEntity {
     @Column(name = "numero_empenho", nullable = false, length = 50)
     private String numeroEmpenho;
 
+    @Column(name = "numero_processo_pagamento", length = 50) // NOVO: Rastreabilidade
+    private String numeroProcessoPagamento;
+
     @Column(name = "data_empenho", nullable = false)
     private LocalDate dataEmpenho;
 
@@ -61,13 +64,10 @@ public class DespesaEntity {
     @Column(name = "fonte_recursos", length = 100)
     private String fonteRecursos;
 
-    // --- RELACIONAMENTO COM CREDOR ---
-    // FetchType.LAZY garante performance: só busca o credor no banco se a gente pedir explicitamente.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "credor_id")
     private CredorEntity credor;
 
-    // --- VALORES FINANCEIROS ---
     @Column(name = "valor_empenhado", precision = 19, scale = 2)
     private BigDecimal valorEmpenhado;
 
@@ -89,14 +89,12 @@ public class DespesaEntity {
     @Column(name = "modalidade_licitacao", length = 100)
     private String modalidadeLicitacao;
 
-    // --- TRILHA DE AUDITORIA E INGESTÃO ---
     @Column(name = "data_importacao")
     private LocalDateTime dataImportacao;
 
     @Column(name = "id_importacao")
     private String idImportacao;
     
-    // Garantindo que a data de importação seja preenchida automaticamente antes de salvar
     @PrePersist
     protected void onCreate() {
         this.dataImportacao = LocalDateTime.now();

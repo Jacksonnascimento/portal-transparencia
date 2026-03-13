@@ -1,5 +1,6 @@
 package br.com.horizon.portal.infrastructure.adapter.in.rest.controller.admin;
 
+import br.com.horizon.portal.application.dto.divida.DividaAtivaAdminDTO;
 import br.com.horizon.portal.application.service.DividaAtivaService;
 import br.com.horizon.portal.application.service.PortalDividaAtivaService;
 import br.com.horizon.portal.infrastructure.persistence.entity.DividaAtivaEntity;
@@ -12,6 +13,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 
 @RestController
@@ -24,16 +26,20 @@ public class DividaAtivaController {
     private final DividaAtivaService service;
     private final PortalDividaAtivaService searchService; // Reaproveitamos a lógica de busca do Portal
 
-   @GetMapping
-    public ResponseEntity<Page<DividaAtivaEntity>> listarAdmin(
+    // --- LISTAGEM BLINDADA PELO DTO ---
+    @GetMapping
+    public ResponseEntity<Page<DividaAtivaAdminDTO>> listarAdmin(
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) Integer ano,
-            @RequestParam(required = false) String tipoDivida, // NOVO PARÂMETRO
+            @RequestParam(required = false) String tipoDivida,
             @PageableDefault(size = 20, sort = "anoInscricao") Pageable pageable) {
 
-        // Agora passamos os 3 parâmetros para a fábrica de buscas
         Specification<DividaAtivaEntity> spec = searchService.criarSpecificationDivida(nome, ano, tipoDivida);
-        return ResponseEntity.ok(repository.findAll(spec, pageable));
+        
+        // Converte a Entidade para o DTO do Admin
+        Page<DividaAtivaAdminDTO> page = repository.findAll(spec, pageable).map(DividaAtivaAdminDTO::fromEntity);
+        
+        return ResponseEntity.ok(page);
     }
 
     @GetMapping("/anos")

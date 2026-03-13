@@ -35,24 +35,23 @@ public class PortalDespesaService {
     private final ConfiguracaoRepository configuracaoRepository;
     private final ArmazenamentoService armazenamentoService;
 
-    // --- 1. FÁBRICA DE BUSCAS DINÂMICAS (COM FILTRO DE PERÍODO) ---
+    // --- 1. FÁBRICA DE BUSCAS DINÂMICAS (ATUALIZADA COM NOVOS CAMPOS) ---
     public Specification<DespesaEntity> criarSpecificationDespesa(
             Integer ano, 
             String credorBusca, 
             String numeroEmpenho, 
+            String numeroProcesso, // NOVO
+            String acaoGoverno,    // NOVO
             String elementoDespesa,
-            LocalDate dataInicio, // NOVO
-            LocalDate dataFim     // NOVO
+            LocalDate dataInicio, 
+            LocalDate dataFim     
     ) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Filtro por Exercício
-            if (ano != null) {
-                predicates.add(cb.equal(root.get("exercicio"), ano));
-            }
+            if (ano != null) predicates.add(cb.equal(root.get("exercicio"), ano));
 
-            // --- FILTRO DE PERÍODO (DATA DE EMPENHO) ---
+            // Filtro de Período
             if (dataInicio != null && dataFim != null) {
                 predicates.add(cb.between(root.get("dataEmpenho"), dataInicio, dataFim));
             } else if (dataInicio != null) {
@@ -61,21 +60,27 @@ public class PortalDespesaService {
                 predicates.add(cb.lessThanOrEqualTo(root.get("dataEmpenho"), dataFim));
             }
 
-            // Filtro por Empenho
             if (numeroEmpenho != null && !numeroEmpenho.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("numeroEmpenho")), "%" + numeroEmpenho.toLowerCase() + "%"));
             }
 
-            // Filtro por Elemento
+            // Filtro por Processo (Novo)
+            if (numeroProcesso != null && !numeroProcesso.isBlank()) {
+                predicates.add(cb.like(cb.lower(root.get("numeroProcessoPagamento")), "%" + numeroProcesso.toLowerCase() + "%"));
+            }
+
+            // Filtro por Ação (Novo)
+            if (acaoGoverno != null && !acaoGoverno.isBlank()) {
+                predicates.add(cb.like(cb.lower(root.get("acaoGoverno")), "%" + acaoGoverno.toLowerCase() + "%"));
+            }
+
             if (elementoDespesa != null && !elementoDespesa.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("elementoDespesa")), "%" + elementoDespesa.toLowerCase() + "%"));
             }
 
-            // Filtro por Credor (Busca por Nome ou Documento)
             if (credorBusca != null && !credorBusca.isBlank()) {
                 Join<DespesaEntity, CredorEntity> credorJoin = root.join("credor", JoinType.INNER);
                 Predicate nomeSemelhante = cb.like(cb.lower(credorJoin.get("razaoSocial")), "%" + credorBusca.toLowerCase() + "%");
-                
                 String apenasNumeros = credorBusca.replaceAll("\\D", "");
                 if (!apenasNumeros.isEmpty()) {
                     predicates.add(cb.or(nomeSemelhante, cb.equal(credorJoin.get("cpfCnpj"), apenasNumeros)));
@@ -88,68 +93,80 @@ public class PortalDespesaService {
         };
     }
 
-    // --- 2. GERAÇÃO DE CSV (DADOS ABERTOS) ---
+    // --- 2. GERAÇÃO DE CSV (EXPORTAÇÃO COMPLETA - 21 COLUNAS) ---
     @Transactional(readOnly = true)
     public void gerarCsvDespesa(Specification<DespesaEntity> spec, PrintWriter writer) {
         List<DespesaEntity> despesas = despesaRepository.findAll(spec);
-        
-        // BOM para Excel identificar UTF-8
         writer.write('\ufeff');
-        writer.println("exercicio;numero_empenho;data_empenho;orgao;credor;cpf_cnpj;elemento_despesa;valor_empenhado;valor_liquidado;valor_pago");
+        // Cabeçalho expandido
+        writer.println("exercicio;empenho;processo;data_empenho;orgao;unidade;funcao;subfuncao;programa;acao;elemento;fonte;credor;cpf_cnpj;vlr_empenhado;vlr_liquidado;dt_liquidacao;vlr_pago;dt_pagamento;modalidade;historico");
         
-        for (DespesaEntity entity : despesas) {
-            String credorNome = entity.getCredor() != null ? entity.getCredor().getRazaoSocial() : "NÃO INFORMADO";
-            String credorDoc = entity.getCredor() != null ? mascararCpfCnpj(entity.getCredor().getCpfCnpj()) : "";
+        for (DespesaEntity d : despesas) {
+            String credorNome = d.getCredor() != null ? d.getCredor().getRazaoSocial() : "NÃO INFORMADO";
+            String credorDoc = d.getCredor() != null ? mascararCpfCnpj(d.getCredor().getCpfCnpj()) : "";
 
-            writer.printf("%s;%s;%s;%s;%s;%s;%s;%s;%s;%s%n",
-                    entity.getExercicio(),
-                    safeCsvField(entity.getNumeroEmpenho()),
-                    entity.getDataEmpenho() != null ? entity.getDataEmpenho().toString() : "",
-                    safeCsvField(entity.getOrgaoNome()),
+            writer.printf("%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s%n",
+                    d.getExercicio(),
+                    safeCsvField(d.getNumeroEmpenho()),
+                    safeCsvField(d.getNumeroProcessoPagamento()),
+                    d.getDataEmpenho(),
+                    safeCsvField(d.getOrgaoNome()),
+                    safeCsvField(d.getUnidadeNome()),
+                    safeCsvField(d.getFuncao()),
+                    safeCsvField(d.getSubfuncao()),
+                    safeCsvField(d.getPrograma()),
+                    safeCsvField(d.getAcaoGoverno()),
+                    safeCsvField(d.getElementoDespesa()),
+                    safeCsvField(d.getFonteRecursos()),
                     safeCsvField(credorNome),
                     credorDoc,
-                    safeCsvField(entity.getElementoDespesa()),
-                    formatarMoeda(entity.getValorEmpenhado()),
-                    formatarMoeda(entity.getValorLiquidado()),
-                    formatarMoeda(entity.getValorPago())
+                    formatarMoeda(d.getValorEmpenhado()),
+                    formatarMoeda(d.getValorLiquidado()),
+                    d.getDataLiquidacao() != null ? d.getDataLiquidacao() : "",
+                    formatarMoeda(d.getValorPago()),
+                    d.getDataPagamento() != null ? d.getDataPagamento() : "",
+                    safeCsvField(d.getModalidadeLicitacao()),
+                    safeCsvField(d.getHistoricoObjetivo())
             );
         }
     }
 
-    // --- 3. GERAÇÃO DE PDF (FORMATO RELATÓRIO) ---
+    // --- 3. GERAÇÃO DE PDF (FORMATO RELATÓRIO COM PROCESSOS) ---
     @Transactional(readOnly = true)
     public void gerarPdfDespesa(Specification<DespesaEntity> spec, HttpServletResponse response) throws Exception {
         List<DespesaEntity> despesas = despesaRepository.findAll(spec);
-        Document document = new Document(PageSize.A4.rotate()); // Modo Paisagem para caber colunas
+        Document document = new Document(PageSize.A4.rotate()); 
         PdfWriter.getInstance(document, response.getOutputStream());
         document.open();
 
         ConfiguracaoEntity config = configuracaoRepository.findAll().stream().findFirst().orElse(null);
         adicionarCabecalhoPdf(document, config);
 
-        Paragraph titulo = new Paragraph("RELATÓRIO DE DESPESAS PÚBLICAS", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14));
+        Paragraph titulo = new Paragraph("RELATÓRIO DE DESPESAS PÚBLICAS DETALHADO", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14));
         titulo.setAlignment(Element.ALIGN_CENTER);
         document.add(titulo);
         document.add(new Paragraph("\n"));
 
-        PdfPTable table = new PdfPTable(7);
+        // Aumentei para 9 colunas para incluir Processo e Unidade
+        PdfPTable table = new PdfPTable(9);
         table.setWidthPercentage(100f);
-        table.setWidths(new float[]{1f, 1.5f, 3f, 2f, 1.5f, 1.5f, 1.5f});
+        table.setWidths(new float[]{0.8f, 1.2f, 1.2f, 2.5f, 1.5f, 1.5f, 1.2f, 1.2f, 1.2f});
 
-        String[] headers = {"Exerc.", "Empenho", "Favorecido", "Elemento", "Empenhado", "Liquidado", "Pago"};
+        String[] headers = {"Exerc.", "Empenho", "Processo", "Favorecido", "Ação", "Elemento", "Empenhado", "Liquidado", "Pago"};
         for (String h : headers) {
-            PdfPCell cell = new PdfPCell(new Phrase(h, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE)));
-            cell.setBackgroundColor(new Color(15, 23, 42)); // slate-900
+            PdfPCell cell = new PdfPCell(new Phrase(h, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, Color.WHITE)));
+            cell.setBackgroundColor(new Color(15, 23, 42));
             cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.setPadding(5);
             table.addCell(cell);
         }
 
-        Font fontDados = FontFactory.getFont(FontFactory.HELVETICA, 8);
+        Font fontDados = FontFactory.getFont(FontFactory.HELVETICA, 7);
         for (DespesaEntity d : despesas) {
             table.addCell(new PdfPCell(new Phrase(d.getExercicio().toString(), fontDados)));
             table.addCell(new PdfPCell(new Phrase(d.getNumeroEmpenho(), fontDados)));
+            table.addCell(new PdfPCell(new Phrase(d.getNumeroProcessoPagamento() != null ? d.getNumeroProcessoPagamento() : "---", fontDados)));
             table.addCell(new PdfPCell(new Phrase(d.getCredor() != null ? d.getCredor().getRazaoSocial() : "---", fontDados)));
+            table.addCell(new PdfPCell(new Phrase(d.getAcaoGoverno(), fontDados)));
             table.addCell(new PdfPCell(new Phrase(d.getElementoDespesa(), fontDados)));
             table.addCell(createRightAlignedCell(formatarMoeda(d.getValorEmpenhado()), fontDados));
             table.addCell(createRightAlignedCell(formatarMoeda(d.getValorLiquidado()), fontDados));
@@ -195,13 +212,15 @@ public class PortalDespesaService {
     }
 
     private String safeCsvField(String value) { 
-        return value == null ? "" : value.replace(";", ","); 
+        if (value == null) return "";
+        return value.replace(";", ",").replace("\n", " ").replace("\r", ""); 
     }
 
     private String mascararCpfCnpj(String doc) {
         if (doc == null || doc.isBlank()) return "---";
         if (doc.length() == 11) return "***." + doc.substring(3, 6) + ".***-**";
-        return doc.substring(0, 3) + ".***.***/****-" + doc.substring(doc.length() - 2);
+        if (doc.length() == 14) return doc.substring(0, 2) + "." + doc.substring(2, 5) + "." + doc.substring(5, 8) + "/****-" + doc.substring(12);
+        return doc;
     }
 
     private String formatarMoeda(java.math.BigDecimal valor) {

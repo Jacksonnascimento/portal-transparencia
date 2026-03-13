@@ -1,5 +1,6 @@
 package br.com.horizon.portal.infrastructure.adapter.in.rest.controller.admin;
 
+import br.com.horizon.portal.application.dto.despesa.DespesaAdminDTO;
 import br.com.horizon.portal.application.service.DespesaService;
 import br.com.horizon.portal.application.service.PortalDespesaService;
 import br.com.horizon.portal.infrastructure.persistence.entity.DespesaEntity;
@@ -27,37 +28,39 @@ public class DespesaController {
 
     private final DespesaRepository repository;
     private final DespesaService service;
-    
-    // Injetamos o Service do Portal para reaproveitar a fábrica de filtros (Specification)
     private final PortalDespesaService searchService; 
 
-    // --- 1. LISTAGEM COM FILTROS (PAGINADA E COM PERÍODO) ---
+    // --- 1. LISTAGEM COM FILTROS COMPLETOS (AGORA COM PROCESSOS E AÇÕES) ---
     @GetMapping
-    public ResponseEntity<Page<DespesaEntity>> listarAdmin(
+    public ResponseEntity<Page<DespesaAdminDTO>> listarAdmin(
             @RequestParam(required = false) Integer ano,
             @RequestParam(required = false) String credor,
             @RequestParam(required = false) String numeroEmpenho,
+            @RequestParam(required = false) String numeroProcesso, // NOVO
+            @RequestParam(required = false) String acaoGoverno,    // NOVO
             @RequestParam(required = false) String elementoDespesa,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio, // NOVO
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,    // NOVO
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio, 
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,    
             @PageableDefault(size = 20, sort = "dataEmpenho") Pageable pageable) {
 
-        // Chamada atualizada passando os 6 parâmetros para a Specification
+        // Chamada sincronizada com a assinatura da Specification atualizada
         Specification<DespesaEntity> spec = searchService.criarSpecificationDespesa(
-                ano, credor, numeroEmpenho, elementoDespesa, dataInicio, dataFim);
+                ano, credor, numeroEmpenho, numeroProcesso, acaoGoverno, elementoDespesa, dataInicio, dataFim);
         
-        return ResponseEntity.ok(repository.findAll(spec, pageable));
+        Page<DespesaAdminDTO> page = repository.findAll(spec, pageable).map(DespesaAdminDTO::fromEntity);
+        
+        return ResponseEntity.ok(page);
     }
 
-    // --- 2. FILTRO INTELIGENTE DE ANOS ---
+    // --- 2. FILTRO DE ANOS ---
     @GetMapping("/anos")
     public ResponseEntity<List<Integer>> listarAnosDisponiveis() {
         return ResponseEntity.ok(repository.findAnosDisponiveis());
     }
 
-    // --- 3. DADOS PARA OS CARDS DE RESUMO (Selo Ouro) ---
+    // --- 3. CARDS DE RESUMO (SINCROZINADO COM O DASHBOARD) ---
     @GetMapping("/resumo")
-    public ResponseEntity<Map<String, BigDecimal>> obterResumoPorAno(@RequestParam Integer ano) {
+    public ResponseEntity<Map<String, BigDecimal>> obterResumoPorAno(@RequestParam(required = false) Integer ano) {
         BigDecimal empenhado = repository.sumTotalEmpenhadoPorAno(ano);
         BigDecimal liquidado = repository.sumTotalLiquidadoPorAno(ano);
         BigDecimal pago = repository.sumTotalPagoPorAno(ano);
@@ -69,7 +72,7 @@ public class DespesaController {
         ));
     }
 
-    // --- 4. INGESTÃO MASSIVA (Via tela de Importação) ---
+    // --- 4. IMPORTAÇÃO ---
     @PostMapping("/upload")
     public ResponseEntity<String> importarCsv(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) return ResponseEntity.badRequest().body("Arquivo vazio!");
@@ -77,7 +80,7 @@ public class DespesaController {
         return ResponseEntity.ok("Arquivo de Despesas processado com sucesso!");
     }
 
-    // --- 5. ROLLBACK DE LOTE ---
+    // --- 5. ROLLBACK ---
     @DeleteMapping("/lote/{loteId}")
     public ResponseEntity<String> excluirLote(@PathVariable String loteId) {
         service.excluirLote(loteId);

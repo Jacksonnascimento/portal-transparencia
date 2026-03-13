@@ -79,9 +79,9 @@ public class ReceitaController {
     }
 
     @GetMapping("/total")
-    public ResponseEntity<BigDecimal> totalArrecadado(@RequestParam Integer ano) {
-        return ResponseEntity.ok(repository.totalArrecadadoPorAno(ano));
-    }
+public ResponseEntity<BigDecimal> totalArrecadado(@RequestParam(required = false) Integer ano) {
+    return ResponseEntity.ok(repository.sumTotalArrecadadoPorAno(ano));
+}
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> importarCsv(@RequestParam("file") MultipartFile file) {

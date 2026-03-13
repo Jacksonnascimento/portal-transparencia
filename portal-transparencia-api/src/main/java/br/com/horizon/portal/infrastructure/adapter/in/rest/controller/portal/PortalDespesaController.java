@@ -1,5 +1,6 @@
 package br.com.horizon.portal.infrastructure.adapter.in.rest.controller.portal;
 
+import br.com.horizon.portal.application.dto.despesa.DespesaPublicaDTO;
 import br.com.horizon.portal.application.service.PortalDespesaService;
 import br.com.horizon.portal.infrastructure.persistence.entity.DespesaEntity;
 import br.com.horizon.portal.infrastructure.persistence.repository.DespesaRepository;
@@ -26,57 +27,22 @@ public class PortalDespesaController {
     private final DespesaRepository despesaRepository;
     private final PortalDespesaService portalDespesaService;
 
-    // --- DTO: PADRÃO DE SEGURANÇA PARA EXPOSIÇÃO PÚBLICA ---
-    public record DespesaPublicaDTO(
-            Integer exercicio,
-            String numeroEmpenho,
-            LocalDate dataEmpenho,
-            String orgaoNome,
-            String credorNome,
-            String credorDocumento,
-            String elementoDespesa,
-            BigDecimal valorEmpenhado,
-            BigDecimal valorLiquidado,
-            BigDecimal valorPago
-    ) {
-        public static DespesaPublicaDTO fromEntity(DespesaEntity entity) {
-            String credorNome = entity.getCredor() != null ? entity.getCredor().getRazaoSocial() : "NÃO INFORMADO";
-            String doc = entity.getCredor() != null ? entity.getCredor().getCpfCnpj() : "";
-            
-            // Mascara CPF para LGPD, mas deixa CNPJ visível
-            if (doc.length() == 11) {
-                doc = "***." + doc.substring(3, 6) + ".***-**";
-            }
-
-            return new DespesaPublicaDTO(
-                    entity.getExercicio(),
-                    entity.getNumeroEmpenho(),
-                    entity.getDataEmpenho(),
-                    entity.getOrgaoNome(),
-                    credorNome,
-                    doc,
-                    entity.getElementoDespesa(),
-                    entity.getValorEmpenhado() != null ? entity.getValorEmpenhado() : BigDecimal.ZERO,
-                    entity.getValorLiquidado() != null ? entity.getValorLiquidado() : BigDecimal.ZERO,
-                    entity.getValorPago() != null ? entity.getValorPago() : BigDecimal.ZERO
-            );
-        }
-    }
-
-    // --- 1. LISTAGEM PRINCIPAL COM FILTROS (ATUALIZADO COM PERÍODO) ---
+    // --- 1. LISTAGEM PRINCIPAL (AGORA COM 8 FILTROS TÉCNICOS) ---
     @GetMapping
     public ResponseEntity<Page<DespesaPublicaDTO>> listarDespesasPublicas(
             @RequestParam(required = false) Integer ano,
             @RequestParam(required = false) String credor,
             @RequestParam(required = false) String numeroEmpenho,
+            @RequestParam(required = false) String numeroProcesso, // NOVO
+            @RequestParam(required = false) String acaoGoverno,    // NOVO
             @RequestParam(required = false) String elementoDespesa,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio, // NOVO
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,    // NOVO
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
             @PageableDefault(size = 20, sort = {"dataEmpenho", "numeroEmpenho"}) Pageable pageable) {
 
-        // Chamada atualizada do Service com 6 parâmetros
+        // Chamada atualizada com os novos campos para a Specification
         Specification<DespesaEntity> spec = portalDespesaService.criarSpecificationDespesa(
-                ano, credor, numeroEmpenho, elementoDespesa, dataInicio, dataFim);
+                ano, credor, numeroEmpenho, numeroProcesso, acaoGoverno, elementoDespesa, dataInicio, dataFim);
         
         Page<DespesaPublicaDTO> page = despesaRepository.findAll(spec, pageable)
                 .map(DespesaPublicaDTO::fromEntity);
@@ -84,13 +50,17 @@ public class PortalDespesaController {
         return ResponseEntity.ok(page);
     }
 
-    // --- 2. CARDS DE RESUMO PÚBLICOS ---
+    // --- 2. CARDS DE RESUMO (ANO OPCIONAL PARA O DASHBOARD) ---
     @GetMapping("/resumo")
-    public ResponseEntity<Map<String, BigDecimal>> obterResumoPorAno(@RequestParam Integer ano) {
+    public ResponseEntity<Map<String, BigDecimal>> obterResumoPorAno(@RequestParam(required = false) Integer ano) {
+        BigDecimal empenhado = despesaRepository.sumTotalEmpenhadoPorAno(ano);
+        BigDecimal liquidado = despesaRepository.sumTotalLiquidadoPorAno(ano);
+        BigDecimal pago = despesaRepository.sumTotalPagoPorAno(ano);
+
         return ResponseEntity.ok(Map.of(
-                "valorEmpenhado", despesaRepository.sumTotalEmpenhadoPorAno(ano),
-                "valorLiquidado", despesaRepository.sumTotalLiquidadoPorAno(ano),
-                "valorPago", despesaRepository.sumTotalPagoPorAno(ano)
+                "valorEmpenhado", empenhado != null ? empenhado : BigDecimal.ZERO,
+                "valorLiquidado", liquidado != null ? liquidado : BigDecimal.ZERO,
+                "valorPago", pago != null ? pago : BigDecimal.ZERO
         ));
     }
 
@@ -100,20 +70,22 @@ public class PortalDespesaController {
         return ResponseEntity.ok(despesaRepository.findAnosDisponiveis());
     }
 
-    // --- 4. EXPORTAÇÃO (ATUALIZADO COM PERÍODO) ---
+    // --- 4. EXPORTAÇÃO (SINCROZINADA COM OS NOVOS FILTROS) ---
     @GetMapping("/exportar")
     public void exportarDespesas(
             @RequestParam(required = false) Integer ano,
             @RequestParam(required = false) String credor,
             @RequestParam(required = false) String numeroEmpenho,
+            @RequestParam(required = false) String numeroProcesso, // NOVO
+            @RequestParam(required = false) String acaoGoverno,    // NOVO
             @RequestParam(required = false) String elementoDespesa,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio, // NOVO
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,    // NOVO
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
             @RequestParam(name = "formato", required = false, defaultValue = "csv") String formato,
             HttpServletResponse response) throws Exception {
 
         Specification<DespesaEntity> spec = portalDespesaService.criarSpecificationDespesa(
-                ano, credor, numeroEmpenho, elementoDespesa, dataInicio, dataFim);
+                ano, credor, numeroEmpenho, numeroProcesso, acaoGoverno, elementoDespesa, dataInicio, dataFim);
 
         if ("pdf".equalsIgnoreCase(formato)) {
             response.setContentType("application/pdf");

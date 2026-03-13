@@ -32,33 +32,44 @@ CREATE TABLE IF NOT EXISTS tb_credor (
 
 
 
-CREATE TABLE IF NOT EXISTS tb_despesa (
+
+
+CREATE TABLE tb_despesa (
     id BIGSERIAL PRIMARY KEY,
     exercicio INT NOT NULL,
-    numero_empenho VARCHAR(50) NOT NULL, -- Aumentei para 50 para garantir formatos complexos (ex: 2025/0001-A)
+    numero_empenho VARCHAR(50) NOT NULL,
+    numero_processo_pagamento VARCHAR(50), -- NOVO: Rastreabilidade total do pagamento
     data_empenho DATE NOT NULL,
+    
+    -- Estrutura Organizacional
     orgao_codigo VARCHAR(10),
     orgao_nome VARCHAR(255),
     unidade_codigo VARCHAR(10),
     unidade_nome VARCHAR(255),
+    
+    -- Classificação Funcional e Programática (Obrigatório para Transparência)
     funcao VARCHAR(100),
     subfuncao VARCHAR(100),
     programa VARCHAR(100),
-    acao_governo VARCHAR(100),
+    acao_governo VARCHAR(100), -- NOVO: Essencial para saber "onde" o dinheiro foi aplicado
     elemento_despesa VARCHAR(100),
     fonte_recursos VARCHAR(100),
     
+    -- Relacionamento
     credor_id BIGINT REFERENCES tb_credor(id),
     
+    -- Valores e Cronologia Financeira
     valor_empenhado DECIMAL(19,2) DEFAULT 0,
     valor_liquidado DECIMAL(19,2) DEFAULT 0,
-    data_liquidacao DATE, -- NOVO
+    data_liquidacao DATE, 
     valor_pago DECIMAL(19,2) DEFAULT 0,
-    data_pagamento DATE, -- NOVO
+    data_pagamento DATE, 
+    
+    -- Detalhes Legais
     historico_objetivo TEXT, 
     modalidade_licitacao VARCHAR(100),
 
-    -- Trilha de Auditoria e Rollback --
+    -- Trilha de Auditoria e Ingestão
     data_importacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     id_importacao VARCHAR(255)
 );

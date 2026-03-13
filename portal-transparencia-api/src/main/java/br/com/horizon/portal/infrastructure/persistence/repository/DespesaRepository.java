@@ -18,15 +18,15 @@ public interface DespesaRepository extends JpaRepository<DespesaEntity, Long>, J
     List<Integer> findAnosDisponiveis();
 
     // --- 2. QUERIES PARA OS CARDS DE RESUMO (Selo Ouro) ---
-    // Usamos COALESCE para garantir que, se não houver dados no ano, retorne 0 ao invés de null
-    
-    @Query("SELECT COALESCE(SUM(d.valorEmpenhado), 0) FROM DespesaEntity d WHERE d.exercicio = :ano")
+    // Usamos COALESCE para garantir que, se não houver dados no ano, retorne 0 ao
+    // invés de null
+    @Query("SELECT SUM(d.valorEmpenhado) FROM DespesaEntity d WHERE (:ano IS NULL OR d.exercicio = :ano)")
     BigDecimal sumTotalEmpenhadoPorAno(@Param("ano") Integer ano);
 
-    @Query("SELECT COALESCE(SUM(d.valorLiquidado), 0) FROM DespesaEntity d WHERE d.exercicio = :ano")
+    @Query("SELECT SUM(d.valorLiquidado) FROM DespesaEntity d WHERE (:ano IS NULL OR d.exercicio = :ano)")
     BigDecimal sumTotalLiquidadoPorAno(@Param("ano") Integer ano);
 
-    @Query("SELECT COALESCE(SUM(d.valorPago), 0) FROM DespesaEntity d WHERE d.exercicio = :ano")
+    @Query("SELECT SUM(d.valorPago) FROM DespesaEntity d WHERE (:ano IS NULL OR d.exercicio = :ano)")
     BigDecimal sumTotalPagoPorAno(@Param("ano") Integer ano);
 
     List<DespesaEntity> findByIdImportacao(String idImportacao);

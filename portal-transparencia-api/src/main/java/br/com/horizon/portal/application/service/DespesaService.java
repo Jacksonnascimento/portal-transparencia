@@ -36,14 +36,10 @@ public class DespesaService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    // --- INGESTÃO MASSIVA COM AUDITORIA E CACHE ---
-
     @Transactional
     public void importarArquivoCsv(MultipartFile file) {
         String loteId = "LOTE-DESPESA-" + System.currentTimeMillis();
         List<DespesaEntity> despesasParaSalvar = new ArrayList<>();
-        
-        // Cache de credores para não sobrecarregar o banco com SELECTs repetidos
         Map<String, CredorEntity> credorCache = new HashMap<>();
         
         int linhaAtual = 0;
@@ -56,20 +52,19 @@ public class DespesaService {
                 linhaAtual++;
                 if (linha.trim().isEmpty()) continue;
                 
-                // O limite -1 garante que colunas vazias no final não sejam ignoradas pelo array
                 String[] dados = linha.split(";", -1);
 
-                if (dados.length < 22) {
-                    throw new IllegalArgumentException("Linha " + linhaAtual + ": O CSV de despesas deve conter 22 colunas padrão PNTP.");
+                // ATUALIZADO: Agora validamos 23 colunas devido ao Processo de Pagamento
+                if (dados.length < 23) {
+                    throw new IllegalArgumentException("Linha " + linhaAtual + ": O CSV deve conter 23 colunas padrão PNTP.");
                 }
 
-                // 1. Tratamento do Credor (Índices 13 e 14)
-                String cpfCnpj = dados[13].trim().replaceAll("\\D", ""); // Limpa formatação
-                String razaoSocial = dados[14].trim();
+                // 1. Tratamento do Credor (Índices movidos para 14 e 15)
+                String cpfCnpj = dados[14].trim().replaceAll("\\D", ""); 
+                String razaoSocial = dados[15].trim();
                 CredorEntity credor = null;
 
                 if (!cpfCnpj.isEmpty()) {
-                    // Busca no cache da memória; se não achar, busca no banco; se não achar, cria novo.
                     credor = credorCache.computeIfAbsent(cpfCnpj, key -> 
                         credorRepository.findByCpfCnpj(key).orElseGet(() -> {
                             CredorEntity novoCredor = CredorEntity.builder()
@@ -77,55 +72,54 @@ public class DespesaService {
                                 .razaoSocial(razaoSocial.isEmpty() ? "NÃO INFORMADO" : razaoSocial)
                                 .tipoPessoa(key.length() == 11 ? "FISICA" : "JURIDICA")
                                 .build();
-                            return credorRepository.save(novoCredor); // Salva na hora para gerar o ID
+                            return credorRepository.save(novoCredor);
                         })
                     );
                 }
 
-                // 2. Montagem da Entidade de Despesa
+                // 2. Montagem da Entidade (Índices ajustados a partir do índice 2)
                 DespesaEntity despesa = new DespesaEntity();
                 despesa.setIdImportacao(loteId);
                 despesa.setExercicio(Integer.parseInt(dados[0].trim()));
                 despesa.setNumeroEmpenho(dados[1].trim());
-                despesa.setDataEmpenho(parseData(dados[2].trim()));
+                despesa.setNumeroProcessoPagamento(dados[2].trim()); // NOVO CAMPO
+                despesa.setDataEmpenho(parseData(dados[3].trim()));
                 
-                despesa.setOrgaoCodigo(dados[3].trim());
-                despesa.setOrgaoNome(dados[4].trim());
-                despesa.setUnidadeCodigo(dados[5].trim());
-                despesa.setUnidadeNome(dados[6].trim());
+                despesa.setOrgaoCodigo(dados[4].trim());
+                despesa.setOrgaoNome(dados[5].trim());
+                despesa.setUnidadeCodigo(dados[6].trim());
+                despesa.setUnidadeNome(dados[7].trim());
                 
-                despesa.setFuncao(dados[7].trim());
-                despesa.setSubfuncao(dados[8].trim());
-                despesa.setPrograma(dados[9].trim());
-                despesa.setAcaoGoverno(dados[10].trim());
-                despesa.setElementoDespesa(dados[11].trim());
-                despesa.setFonteRecursos(dados[12].trim());
+                despesa.setFuncao(dados[8].trim());
+                despesa.setSubfuncao(dados[9].trim());
+                despesa.setPrograma(dados[10].trim());
+                despesa.setAcaoGoverno(dados[11].trim());
+                despesa.setElementoDespesa(dados[12].trim());
+                despesa.setFonteRecursos(dados[13].trim());
                 
-                despesa.setCredor(credor); // Relacionamento inteligente
+                despesa.setCredor(credor);
                 
-                despesa.setValorEmpenhado(parseMoeda(dados[15].trim()));
-                despesa.setValorLiquidado(parseMoeda(dados[16].trim()));
-                despesa.setDataLiquidacao(parseData(dados[17].trim()));
-                despesa.setValorPago(parseMoeda(dados[18].trim()));
-                despesa.setDataPagamento(parseData(dados[19].trim()));
+                despesa.setValorEmpenhado(parseMoeda(dados[16].trim()));
+                despesa.setValorLiquidado(parseMoeda(dados[17].trim()));
+                despesa.setDataLiquidacao(parseData(dados[18].trim()));
+                despesa.setValorPago(parseMoeda(dados[19].trim()));
+                despesa.setDataPagamento(parseData(dados[20].trim()));
                 
-                despesa.setHistoricoObjetivo(dados[20].trim());
-                despesa.setModalidadeLicitacao(dados[21].trim());
+                despesa.setHistoricoObjetivo(dados[21].trim());
+                despesa.setModalidadeLicitacao(dados[22].trim());
 
                 despesasParaSalvar.add(despesa);
             }
 
-            // Salva todas as despesas em Batch (Alta performance)
             despesaRepository.saveAll(despesasParaSalvar);
 
-            // LOG DE AUDITORIA (Exigência Ouro)
             eventPublisher.publishEvent(new LogAuditoriaEvent(
                 "IMPORTACAO_LOTE_CSV", 
                 "DESPESA", 
                 loteId, 
                 null,
                 "Importação de " + despesasParaSalvar.size() + " registros via CSV."
-        ));
+            ));
 
         } catch (Exception e) {
             log.error("Erro na importação de Despesa Pública na linha {}", linhaAtual, e);
@@ -133,19 +127,14 @@ public class DespesaService {
         }
     }
 
-    // --- ROLLBACK DE SEGURANÇA ---
-
     @Transactional
     public void excluirLote(String loteId) {
-        // 1. Busca os registros (Use findByIdImportacao se já tiver criado, senão use o filtro stream)
         List<DespesaEntity> paraExcluir = despesaRepository.findAll().stream()
                 .filter(d -> loteId.equals(d.getIdImportacao())).toList();
 
         if (paraExcluir.isEmpty()) throw new IllegalArgumentException("Lote não encontrado: " + loteId);
 
         try {
-            // 2. CORREÇÃO CRÍTICA: Em vez de passar a entidade JPA pura para o ObjectMapper,
-            // criamos uma lista de Map simples. Isso evita o erro de Proxy do Hibernate e Recursão.
             List<Map<String, Object>> dadosSimplificados = paraExcluir.stream().map(d -> {
                 Map<String, Object> map = new HashMap<>();
                 map.put("exercicio", d.getExercicio());
@@ -157,7 +146,6 @@ public class DespesaService {
 
             String jsonExcluidos = objectMapper.writeValueAsString(dadosSimplificados);
             
-            // 3. Dispara o Log (Garantindo o nome "DESPESA" para o Front)
             eventPublisher.publishEvent(new LogAuditoriaEvent(
                     "EXCLUSAO_LOTE", 
                     "DESPESA", 
@@ -166,7 +154,6 @@ public class DespesaService {
                     "Revogação total do lote. Itens removidos: " + paraExcluir.size()
             ));
             
-            // 4. Deleta de forma performática
             despesaRepository.deleteAllInBatch(paraExcluir);
 
         } catch (Exception e) {
@@ -174,8 +161,6 @@ public class DespesaService {
             throw new RuntimeException("Falha ao auditar exclusão de lote: " + e.getMessage());
         }
     }
-
-    // --- MÉTODOS AUXILIARES ---
 
     private BigDecimal parseMoeda(String valor) {
         if (valor == null || valor.isBlank()) return BigDecimal.ZERO;
@@ -187,7 +172,7 @@ public class DespesaService {
         try {
             return LocalDate.parse(dataStr, DATE_FORMATTER);
         } catch (Exception e) {
-            return null; // Caso a data venha mal formatada, salvamos como null em vez de quebrar tudo
+            return null;
         }
     }
 }

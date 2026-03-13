@@ -25,14 +25,14 @@ public interface ReceitaRepository extends JpaRepository<ReceitaEntity, Long>, J
 
     Page<ReceitaEntity> findByOrigemContainingIgnoreCase(String termo, Pageable pageable);
 
-    @Query("SELECT COALESCE(SUM(r.valorArrecadado), 0) FROM ReceitaEntity r WHERE r.exercicio = :exercicio")
-    BigDecimal totalArrecadadoPorAno(@Param("exercicio") Integer exercicio);
+    @Query("SELECT SUM(r.valorArrecadado) FROM ReceitaEntity r WHERE (:ano IS NULL OR r.exercicio = :ano)")
+    BigDecimal sumTotalArrecadadoPorAno(@Param("ano") Integer ano); // Verifique se o nome do seu método é esse mesmo
 
     @Query("SELECT DISTINCT r.exercicio FROM ReceitaEntity r ORDER BY r.exercicio DESC")
     List<Integer> findDistinctExercicios();
 
     // --- MÉTODOS PARA O DESFAZER (ROLLBACK) ---
-    
+
     long countByIdImportacao(String idImportacao);
 
     @Modifying
