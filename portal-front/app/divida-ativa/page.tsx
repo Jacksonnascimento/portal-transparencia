@@ -1,3 +1,4 @@
+// portal-front/app/divida-ativa/page.tsx
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -28,13 +29,15 @@ export default function DividaAtivaPage() {
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
 
+  // Define o ano corrente dinamicamente
+  const anoCorrente = new Date().getFullYear().toString();
+
   const [filtros, setFiltros] = useState({
     nome: '',
-    ano: '', 
+    ano: anoCorrente, // ALTERAÇÃO: Inicia com o ano corrente por padrão
     tipo: ''
   });
 
-  
   const [filtrosAplicados, setFiltrosAplicados] = useState(filtros);
   const anos = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - i).toString());
 
@@ -45,7 +48,7 @@ export default function DividaAtivaPage() {
       const params = new URLSearchParams();
       if (filtros.nome) params.append('nome', filtros.nome);
       if (filtros.ano) params.append('ano', filtros.ano);
-      if (filtros.tipo) params.append('tipo', filtros.tipo);
+      if (filtros.tipo) params.append('tipoDivida', filtros.tipo); 
       
       // --- APLICAÇÃO DA PAGINAÇÃO DINÂMICA ---
       params.append('page', paginaAtual.toString());
@@ -104,7 +107,7 @@ export default function DividaAtivaPage() {
       params.append('formato', formato);
       if (filtrosAplicados.nome) params.append('nome', filtrosAplicados.nome);
       if (filtrosAplicados.ano) params.append('ano', filtrosAplicados.ano);
-      if (filtrosAplicados.tipo) params.append('tipo', filtrosAplicados.tipo);
+      if (filtrosAplicados.tipo) params.append('tipoDivida', filtrosAplicados.tipo);
 
       const response = await api.get(`/portal/receitas/divida-ativa/exportar?${params.toString()}`, {
         responseType: 'blob',
@@ -186,18 +189,18 @@ export default function DividaAtivaPage() {
           </FilterBox>
           <FilterBox label="Ano de Inscrição">
             <select value={filtros.ano} onChange={(e) => setFiltros({...filtros, ano: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none cursor-pointer">
-              <option value="">Todos os anos</option>
+              {/* ALTERAÇÃO: Removida a opção "Todos os anos". Apenas mapeamos os anos disponíveis */}
               {anos.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </FilterBox>
           <FilterBox label="Tipo de Dívida">
-            <select value={filtros.tipo} onChange={(e) => setFiltros({...filtros, tipo: e.target.value})} className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none cursor-pointer">
-              <option value="">Todos (IPTU, ISS, etc.)</option>
-              <option value="IPTU">IPTU</option>
-              <option value="ISS">ISS / ISSQN</option>
-              <option value="Multa">Multas</option>
-              <option value="Taxas">Taxas</option>
-            </select>
+             <input 
+               type="text" 
+               placeholder="Ex: IPTU, Multa, Taxas..." 
+               value={filtros.tipo} 
+               onChange={(e) => setFiltros({...filtros, tipo: e.target.value})} 
+               className="w-full bg-transparent font-bold text-slate-800 text-sm outline-none placeholder:text-slate-300" 
+             />
           </FilterBox>
           <button onClick={handlePesquisar} className="bg-rose-600 text-white h-[46px] rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-colors shadow-md flex items-center justify-center gap-2">
             <Search size={16} /> Pesquisar
@@ -245,7 +248,7 @@ export default function DividaAtivaPage() {
                 </tr>
               ))}
               {!loading && !error && dividas.length === 0 && (
-                 <tr><td colSpan={4} className="py-12 text-center text-slate-500 text-sm">Nenhum devedor encontrado. Verifique se a API /portal/receitas/divida-ativa está retornando dados.</td></tr>
+                 <tr><td colSpan={4} className="py-12 text-center text-slate-500 text-sm">Nenhum devedor encontrado no ano selecionado. Verifique os filtros de pesquisa.</td></tr>
               )}
             </tbody>
           </table>
