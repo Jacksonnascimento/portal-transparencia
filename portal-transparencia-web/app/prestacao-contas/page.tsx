@@ -6,9 +6,8 @@ import { Search, Plus, FileText, Trash2, Eye, RefreshCw, Filter, X, ChevronLeft,
 import { prestacaoContasService, PrestacaoContas, FiltrosPrestacaoContas } from '@/services/prestacaoContasService';
 import PrestacaoContasFormModal from '@/components/prestacao-contas/PrestacaoContasFormModal';
 
-
 export default function PrestacaoContasPage() {
-  const [data, setData] = useState<any>(null); // Mantemos any para capturar a paginação do Spring (content, totalElements, etc)
+  const [data, setData] = useState<any>(null); // Mantemos any para capturar a paginação do Spring
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -25,7 +24,6 @@ export default function PrestacaoContasPage() {
   const carregarDados = useCallback(async () => {
     setLoading(true);
     try {
-      // Limpa chaves vazias para não mandar undefined/string vazia na API
       const paramsLimpos = Object.fromEntries(
         Object.entries(filtros).filter(([_, v]) => v !== '' && v !== undefined && v !== null && !Number.isNaN(v))
       );
@@ -45,8 +43,7 @@ export default function PrestacaoContasPage() {
   }, [carregarDados]);
 
   const handleExcluir = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // REGRA DE OURO
-    
+    e.stopPropagation();
     if (window.confirm("Atenção: Tem certeza que deseja excluir permanentemente este documento contábil? Esta ação será registrada na auditoria.")) {
       try {
         await prestacaoContasService.excluir(id);
@@ -59,13 +56,27 @@ export default function PrestacaoContasPage() {
   };
 
   const handleVisualizarPdf = (url: string) => {
-    // Busca a base URL do backend. Se não existir no .env, assume localhost:8080
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-    
-    // Garante que a URL final esteja correta, sem duplicar caso já venha com 'http'
     const urlCompleta = url.startsWith('http') ? url : `${baseUrl}${url}`;
-    
     window.open(urlCompleta, '_blank');
+  };
+
+  // --- FUNÇÃO CORRIGIDA (EVITA BUILD ERROR E BLOQUEIA ANOS NEGATIVOS) ---
+  const handleFiltroChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    
+    let processedValue: any = value;
+    
+    // Blindagem de Exercício Negativo
+    if (name === 'exercicio' && value !== '') {
+      processedValue = Math.max(0, parseInt(value));
+    }
+
+    setFiltros(prev => ({ 
+      ...prev, 
+      [name]: processedValue,
+      page: 0 // Reseta paginação ao filtrar
+    }));
   };
 
   const limparFiltros = () => {
@@ -88,7 +99,6 @@ export default function PrestacaoContasPage() {
       
       <main className="flex-1 p-6 overflow-y-auto relative z-0">
         
-        {/* Cabeçalho no padrão Despesas */}
         <header className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
              <div className="p-2 bg-black text-white rounded-lg"><FileText size={24} /></div>
@@ -115,7 +125,6 @@ export default function PrestacaoContasPage() {
           </div>
         </header>
 
-        {/* Bloco de Filtros Expandível */}
         {showFilters && (
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6 animate-in fade-in slide-in-from-top-2">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -156,6 +165,7 @@ export default function PrestacaoContasPage() {
                   name="exercicio"
                   value={filtros.exercicio || ''}
                   onChange={handleFiltroChange}
+                  min="2000" // <-- BLOQUEIA UI NEGATIVA
                   placeholder="Ano"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400"
                 />
@@ -175,12 +185,10 @@ export default function PrestacaoContasPage() {
                   <X size={14} /> Limpar Todos os Filtros
                 </button>
               </div>
-
             </div>
           </div>
         )}
 
-        {/* Tabela de Dados no Padrão do Sistema */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
           <div className="flex-1 overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -263,7 +271,6 @@ export default function PrestacaoContasPage() {
             </table>
           </div>
           
-          {/* Rodapé Paginador */}
           {!loading && data && data.totalElements > 0 && (
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono">
@@ -288,10 +295,8 @@ export default function PrestacaoContasPage() {
             </div>
           )}
         </div>
-
       </main>
 
-      {/* Renderização Condicional do Modal */}
       {isModalOpen && (
         <PrestacaoContasFormModal 
           onClose={() => setIsModalOpen(false)} 
