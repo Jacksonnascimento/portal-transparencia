@@ -105,7 +105,7 @@ export default function PrestacaoContasPage() {
              <div>
                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Prestação de Contas</h2>
                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 italic text-emerald-600 font-mono">
-                 Documentos Fiscais • Selo Ouro PNTP
+                 Documentos Fiscais 
                </p>
              </div>
           </div>
