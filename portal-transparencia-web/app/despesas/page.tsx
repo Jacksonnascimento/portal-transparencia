@@ -31,9 +31,9 @@ interface Despesa {
   numeroEmpenho: string;
   numeroProcessoPagamento: string;
   dataEmpenho: string;
-  orgaoCodigo: string; // Adicionado
+  orgaoCodigo: string;
   orgaoNome: string;
-  unidadeCodigo: string; // Adicionado
+  unidadeCodigo: string;
   unidadeNome: string;
   funcao: string;
   subfuncao: string;
@@ -63,14 +63,16 @@ interface Resumo {
 export default function DespesasPage() {
   const [data, setData] = useState<any>(null);
   const [resumo, setResumo] = useState<Resumo | null>(null);
+  const [anos, setAnos] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Estados dos Filtros
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
   
-  // Estados dos Filtros
+  const [fAno, setFAno] = useState<number | null>(null); // Filtro de Exercício (Pills)
   const [fDataInicio, setFDataInicio] = useState<string>('');
   const [fDataFim, setFDataFim] = useState<string>('');
   const [fCredor, setFCredor] = useState('');
@@ -79,20 +81,33 @@ export default function DespesasPage() {
   const [fAcao, setFAcao] = useState('');
   const [fElemento, setFElemento] = useState('');
 
-  const fetchResumo = useCallback(async () => {
-    let anoBase = new Date().getFullYear();
-    if (fDataInicio) anoBase = parseInt(fDataInicio.substring(0, 4));
-    try {
-      const res = await api.get(`/despesas/resumo?ano=${anoBase}`);
-      setResumo(res.data);
-    } catch (err) { console.error("Erro ao carregar resumo"); }
-  }, [fDataInicio]);
+  // 1. Busca os anos disponíveis para montar as abas
+  useEffect(() => {
+    api.get('/despesas/anos').then(res => {
+      setAnos(res.data);
+      if (res.data.length > 0 && fAno === null) {
+        setFAno(res.data[0]); // Seleciona o ano mais recente por padrão
+      }
+    }).catch(err => console.error("Erro ao buscar anos", err));
+  }, []);
 
+  // 2. Busca o resumo financeiro filtrado pelo exercício selecionado
+  const fetchResumo = useCallback(async () => {
+    try {
+      const queryParam = fAno ? `?ano=${fAno}` : '';
+      const res = await api.get(`/despesas/resumo${queryParam}`);
+      setResumo(res.data);
+    } catch (err) { console.error("Erro ao carregar resumo", err); }
+  }, [fAno]);
+
+  // 3. Busca a listagem paginada com todos os filtros
   const fetchDespesas = useCallback(async (pageNumber: number) => {
     setLoading(true);
     setError(null);
     try {
       let params = `page=${pageNumber}&size=20&sort=dataEmpenho,desc`;
+      
+      if (fAno) params += `&ano=${fAno}`;
       if (fDataInicio) params += `&dataInicio=${fDataInicio}`;
       if (fDataFim) params += `&dataFim=${fDataFim}`;
       if (fCredor) params += `&credor=${encodeURIComponent(fCredor)}`;
@@ -107,7 +122,7 @@ export default function DespesasPage() {
     } catch (err) {
       setError("Falha ao carregar despesas.");
     } finally { setLoading(false); }
-  }, [fDataInicio, fDataFim, fCredor, fEmpenho, fProcesso, fAcao, fElemento]);
+  }, [fAno, fDataInicio, fDataFim, fCredor, fEmpenho, fProcesso, fAcao, fElemento]);
 
   useEffect(() => { 
     fetchDespesas(page); 
@@ -133,7 +148,7 @@ export default function DespesasPage() {
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `Relatorio_Despesas_${new Date().getTime()}.csv`);
+    link.setAttribute('download', `Transparencia_Despesas_${fAno || 'Geral'}.csv`);
     link.click();
   };
 
@@ -142,48 +157,53 @@ export default function DespesasPage() {
       <Sidebar />
       <main className="flex-1 p-6 overflow-y-auto relative z-0">
         
-        <header className="flex items-center justify-between mb-8">
+        <header className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
              <div className="p-2 bg-black text-white rounded-lg"><TrendingDown size={24} /></div>
              <div>
                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Despesas Públicas</h2>
-               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 italic text-emerald-600">Transparência Ouro • PNTP</p>
+               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 italic text-emerald-600 font-mono">Gestão Orçamentária • PNTP</p>
              </div>
           </div>
           <div className="flex gap-2">
             <button onClick={handleExportCSV} className="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm font-bold text-xs uppercase text-slate-600 hover:text-black transition-all">
-              <Download size={14} className="mr-2" /> Exportar Planilha
+              <Download size={14} className="mr-2" /> Planilha
             </button>
             <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center px-4 py-2 border rounded-xl shadow-sm font-bold text-xs uppercase transition-all ${showFilters ? 'bg-black text-white border-black' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
-              <Filter size={14} className="mr-2" /> {showFilters ? 'Fechar Filtros' : 'Filtrar Busca'}
+              <Filter size={14} className="mr-2" /> {showFilters ? 'Fechar' : 'Filtrar'}
             </button>
           </div>
         </header>
 
+        {/* ABAS DE EXERCÍCIO - RESOLVE O PROBLEMA DOS TOTAIS ZERADOS */}
+        <div className="flex items-center gap-2 mb-6 bg-slate-100/50 p-2 rounded-2xl border border-slate-200 w-fit">
+          <span className="text-[9px] font-black text-slate-400 uppercase px-2">Exercício:</span>
+          <button onClick={() => setFAno(null)} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${fAno === null ? 'bg-black text-white shadow-lg' : 'text-slate-500 hover:bg-white'}`}>TUDO</button>
+          {anos.map(ano => (
+            <button key={ano} onClick={() => setFAno(ano)} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${fAno === ano ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-white'}`}>{ano}</button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <CardResumo icon={<DollarSign/>} label="Empenhado" value={resumo?.valorEmpenhado} color="amber" periodo={displayPeriodo(fDataInicio, fDataFim)} />
-          <CardResumo icon={<Briefcase/>} label="Liquidado" value={resumo?.valorLiquidado} color="blue" periodo={displayPeriodo(fDataInicio, fDataFim)} />
-          <CardResumo icon={<CheckCircle2/>} label="Pago" value={resumo?.valorPago} color="emerald" periodo={displayPeriodo(fDataInicio, fDataFim)} />
+          <CardResumo icon={<DollarSign/>} label="Empenhado" value={resumo?.valorEmpenhado} color="amber" periodo={fAno ? `Exercício ${fAno}` : 'Total Geral'} />
+          <CardResumo icon={<Briefcase/>} label="Liquidado" value={resumo?.valorLiquidado} color="blue" periodo={fAno ? `Exercício ${fAno}` : 'Total Geral'} />
+          <CardResumo icon={<CheckCircle2/>} label="Pago" value={resumo?.valorPago} color="emerald" periodo={fAno ? `Exercício ${fAno}` : 'Total Geral'} />
         </div>
 
         {showFilters && (
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6 animate-in fade-in slide-in-from-top-2">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><Calendar size={12}/> Data Início</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><Calendar size={12}/> Início</label>
                 <input type="date" value={fDataInicio} onChange={(e) => { setFDataInicio(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><Calendar size={12}/> Data Fim</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><Calendar size={12}/> Fim</label>
                 <input type="date" value={fDataFim} onChange={(e) => { setFDataFim(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
               </div>
               <div className="md:col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Favorecido (Nome ou Documento)</label>
                 <input type="text" placeholder="Buscar por credor..." value={fCredor} onChange={(e) => { setFCredor(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Nº Empenho</label>
-                <input type="text" placeholder="Ex: 2025/123" value={fEmpenho} onChange={(e) => { setFEmpenho(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Processo Administrativo</label>
@@ -193,9 +213,9 @@ export default function DespesasPage() {
                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Ação de Governo</label>
                 <input type="text" placeholder="Ex: Merenda Escolar" value={fAcao} onChange={(e) => { setFAcao(e.target.value); setPage(0); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end col-span-2">
                 <button onClick={() => {setFDataInicio(''); setFDataFim(''); setFCredor(''); setFEmpenho(''); setFProcesso(''); setFAcao(''); setFElemento(''); setPage(0);}} className="px-4 py-2 text-[10px] font-bold text-red-500 uppercase flex items-center gap-1 hover:bg-red-50 rounded-lg transition-colors">
-                  <X size={14} /> Limpar Filtros
+                  <X size={14} /> Limpar Todos os Filtros
                 </button>
               </div>
             </div>
@@ -207,7 +227,7 @@ export default function DespesasPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 bg-slate-50/50">
-                  <th className="px-6 py-4">Identificação</th>
+                  <th className="px-6 py-4">Empenho / Processo</th>
                   <th className="px-6 py-4">Favorecido / Gestão</th>
                   <th className="px-6 py-4">Ação / Elemento</th>
                   <th className="px-6 py-4 text-right">Valores</th>
@@ -219,27 +239,27 @@ export default function DespesasPage() {
                     <tr key={item.id} onClick={() => setSelectedDespesa(item)} className="hover:bg-slate-50 transition-colors text-xs cursor-pointer group">
                       <td className="px-6 py-4">
                         <div className="font-bold text-slate-900">{item.numeroEmpenho}</div>
-                        <div className="text-[9px] text-slate-400 flex items-center gap-1 font-bold uppercase"><Hash size={10}/> Proc: {item.numeroProcessoPagamento || '---'}</div>
+                        <div className="text-[9px] text-slate-400 flex items-center gap-1 font-bold uppercase"><Hash size={10}/> {item.numeroProcessoPagamento || 'S/ PROC'}</div>
                         <div className="text-[10px] text-slate-400 mt-1">{formatDate(item.dataEmpenho)}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-bold text-slate-700 group-hover:text-black line-clamp-1">{item.credor?.razaoSocial}</div>
-                        <div className="flex flex-col gap-0.5 mt-1">
-                          <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded w-fit font-bold uppercase">
-                            Órgão: {item.orgaoNome}
+                        <div className="font-bold text-slate-700 group-hover:text-black line-clamp-1 uppercase">{item.credor?.razaoSocial}</div>
+                        <div className="flex flex-col gap-1 mt-1.5">
+                          <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded w-fit font-black uppercase border border-blue-100">
+                             {item.orgaoNome}
                           </span>
-                          <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded w-fit font-medium uppercase italic">
-                            Unid: {item.unidadeNome}
+                          <span className="text-[9px] bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded w-fit font-bold uppercase border border-slate-100 italic">
+                             {item.unidadeNome}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-bold text-slate-600 flex items-center gap-1"><Target size={10} className="text-slate-400"/> {item.acaoGoverno}</div>
+                        <div className="font-bold text-slate-600 flex items-center gap-1 uppercase"><Target size={10} className="text-slate-400"/> {item.acaoGoverno}</div>
                         <div className="text-[10px] text-slate-400 mt-1 line-clamp-1">{item.elementoDespesa}</div>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="text-[10px] text-slate-400">Emp: {formatMoney(item.valorEmpenhado)}</div>
-                        <div className="font-black text-emerald-600">Pago: {formatMoney(item.valorPago)}</div>
+                        <div className="font-black text-emerald-600 mt-0.5">Pago: {formatMoney(item.valorPago)}</div>
                       </td>
                     </tr>
                   ))}
@@ -249,7 +269,7 @@ export default function DespesasPage() {
           
           {!loading && data && data.totalElements > 0 && (
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Página {data.number + 1} de {data.totalPages}</span>
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono">Página {data.number + 1} de {data.totalPages} • {data.totalElements} registros</span>
               <div className="flex gap-2">
                 <button onClick={(e) => { e.stopPropagation(); setPage(p => Math.max(0, p - 1)); }} disabled={data.first} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50"><ChevronLeft size={16} /></button>
                 <button onClick={(e) => { e.stopPropagation(); setPage(p => Math.min(data.totalPages - 1, p + 1)); }} disabled={data.last} className="p-2 border border-slate-200 rounded-lg bg-white disabled:opacity-50 hover:bg-slate-50"><ChevronRight size={16} /></button>
@@ -260,13 +280,13 @@ export default function DespesasPage() {
 
         {selectedDespesa && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in">
-            <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-black text-white rounded-2xl shadow-lg"><Search size={24}/></div>
                   <div>
                     <h3 className="text-xl font-black text-slate-800">Rastreio Completo da Despesa</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] font-mono">
                       Exercício {selectedDespesa.exercicio} • Empenho {selectedDespesa.numeroEmpenho}
                     </p>
                   </div>
@@ -277,7 +297,7 @@ export default function DespesasPage() {
               <div className="p-8 overflow-y-auto space-y-10">
                 
                 <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {/* GESTÃO ORGANIZACIONAL */}
+                  {/* GESTÃO ORGANIZACIONAL - SEPARADO ÓRGÃO E UNIDADE */}
                   <div className="space-y-5">
                     <div className="flex items-center gap-2 border-b border-blue-100 pb-2">
                       <Building2 size={16} className="text-blue-600" />
@@ -288,7 +308,7 @@ export default function DespesasPage() {
                     <InfoItem icon={<Gavel size={14}/>} label="Modalidade de Licitação" value={selectedDespesa.modalidadeLicitacao} />
                   </div>
                   
-                  {/* CLASSIFICAÇÃO ORÇAMENTÁRIA */}
+                  {/* CLASSIFICAÇÃO ORÇAMENTÁRIA - TODOS OS CAMPOS */}
                   <div className="space-y-5">
                     <div className="flex items-center gap-2 border-b border-emerald-100 pb-2">
                       <Target size={16} className="text-emerald-600" />
@@ -296,7 +316,10 @@ export default function DespesasPage() {
                     </div>
                     <InfoItem label="Ação de Governo" value={selectedDespesa.acaoGoverno} />
                     <InfoItem label="Programa" value={selectedDespesa.programa} />
-                    <InfoItem label="Função / Subfunção" value={`${selectedDespesa.funcao} / ${selectedDespesa.subfuncao}`} />
+                    <div className="grid grid-cols-2 gap-4">
+                       <InfoItem label="Função" value={selectedDespesa.funcao} />
+                       <InfoItem label="Subfunção" value={selectedDespesa.subfuncao} />
+                    </div>
                     <InfoItem icon={<FileText size={14}/>} label="Elemento de Despesa" value={selectedDespesa.elementoDespesa} />
                   </div>
 
@@ -308,15 +331,15 @@ export default function DespesasPage() {
                     </div>
                     <InfoItem label="Processo de Pagamento" value={selectedDespesa.numeroProcessoPagamento} />
                     <InfoItem label="Fonte de Recursos" value={selectedDespesa.fonteRecursos} />
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 shadow-inner">
                        <span className="text-[10px] font-black text-slate-400 uppercase">Favorecido / Credor</span>
-                       <p className="text-xs font-bold text-slate-800 mt-1">{selectedDespesa.credor?.razaoSocial}</p>
-                       <p className="text-[10px] font-mono text-slate-500 mt-0.5">{maskDocumento(selectedDespesa.credor?.cpfCnpj)}</p>
+                       <p className="text-xs font-black text-slate-800 mt-1 uppercase">{selectedDespesa.credor?.razaoSocial}</p>
+                       <p className="text-[11px] font-mono font-bold text-blue-600 mt-1">{maskDocumento(selectedDespesa.credor?.cpfCnpj)}</p>
                     </div>
                   </div>
                 </section>
 
-                {/* HISTÓRICO */}
+                {/* HISTÓRICO / OBJETIVO */}
                 <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 relative">
                   <div className="absolute -top-3 left-6 px-3 bg-white border border-slate-100 rounded-full text-[10px] font-black text-slate-400 uppercase">Objetivo da Despesa</div>
                   <p className="text-sm text-slate-600 leading-relaxed italic font-medium">
@@ -326,7 +349,7 @@ export default function DespesasPage() {
 
                 {/* TIMELINE FINANCEIRA */}
                 <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em] text-center mb-6">Fluxo Cronológico do Dinheiro</h4>
+                  <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em] text-center mb-6">Fluxo Financeiro do Recurso</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <TimelineStep label="Empenhado" value={selectedDespesa.valorEmpenhado} date={selectedDespesa.dataEmpenho} active color="amber" />
                     <TimelineStep label="Liquidado" value={selectedDespesa.valorLiquidado} date={selectedDespesa.dataLiquidacao} active={!!selectedDespesa.dataLiquidacao} color="blue" />
@@ -342,7 +365,8 @@ export default function DespesasPage() {
   );
 }
 
-// Componentes Auxiliares Refinados
+// --- COMPONENTES AUXILIARES REFINADOS ---
+
 function displayPeriodo(ini: string, fim: string) {
   if (ini && fim) return `${new Date(ini).toLocaleDateString('pt-BR')} — ${new Date(fim).toLocaleDateString('pt-BR')}`;
   if (ini) return `A partir de ${new Date(ini).toLocaleDateString('pt-BR')}`;
@@ -373,7 +397,7 @@ function InfoItem({ icon, label, value }: any) {
       <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1 mb-1.5 transition-colors group-hover:text-slate-600">
         {icon} {label}
       </label>
-      <p className="text-xs font-bold text-slate-700 leading-snug border-l-2 border-slate-100 pl-3 group-hover:border-blue-500 transition-all">
+      <p className="text-xs font-bold text-slate-700 leading-snug border-l-2 border-slate-100 pl-3 group-hover:border-blue-500 transition-all uppercase">
         {value || '---'}
       </p>
     </div>
@@ -390,7 +414,7 @@ function TimelineStep({ label, value, date, active, color }: any) {
         <span className={`text-[10px] font-black uppercase tracking-widest ${active ? textColors[color] : 'text-slate-400'}`}>{label}</span>
       </div>
       <div className="text-xl font-black text-slate-800">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0)}</div>
-      <div className="flex items-center gap-1 mt-2 text-[10px] font-bold text-slate-400 uppercase">
+      <div className="flex items-center gap-1 mt-2 text-[10px] font-bold text-slate-400 uppercase font-mono">
         <Calendar size={10}/> {date ? new Date(date).toLocaleDateString('pt-BR') : 'Pendente'}
       </div>
     </div>
