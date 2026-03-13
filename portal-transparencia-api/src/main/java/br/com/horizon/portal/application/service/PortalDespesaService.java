@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.Color;
 import java.io.PrintWriter;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,19 +35,47 @@ public class PortalDespesaService {
     private final ConfiguracaoRepository configuracaoRepository;
     private final ArmazenamentoService armazenamentoService;
 
-    public Specification<DespesaEntity> criarSpecificationDespesa(Integer ano, String credorBusca, String numeroEmpenho, String elementoDespesa) {
+    // --- 1. FÁBRICA DE BUSCAS DINÂMICAS (COM FILTRO DE PERÍODO) ---
+    public Specification<DespesaEntity> criarSpecificationDespesa(
+            Integer ano, 
+            String credorBusca, 
+            String numeroEmpenho, 
+            String elementoDespesa,
+            LocalDate dataInicio, // NOVO
+            LocalDate dataFim     // NOVO
+    ) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            if (ano != null) predicates.add(cb.equal(root.get("exercicio"), ano));
+
+            // Filtro por Exercício
+            if (ano != null) {
+                predicates.add(cb.equal(root.get("exercicio"), ano));
+            }
+
+            // --- FILTRO DE PERÍODO (DATA DE EMPENHO) ---
+            if (dataInicio != null && dataFim != null) {
+                predicates.add(cb.between(root.get("dataEmpenho"), dataInicio, dataFim));
+            } else if (dataInicio != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("dataEmpenho"), dataInicio));
+            } else if (dataFim != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("dataEmpenho"), dataFim));
+            }
+
+            // Filtro por Empenho
             if (numeroEmpenho != null && !numeroEmpenho.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("numeroEmpenho")), "%" + numeroEmpenho.toLowerCase() + "%"));
             }
+
+            // Filtro por Elemento
             if (elementoDespesa != null && !elementoDespesa.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("elementoDespesa")), "%" + elementoDespesa.toLowerCase() + "%"));
             }
+
+            // Filtro por Credor (Busca por Nome ou Documento)
             if (credorBusca != null && !credorBusca.isBlank()) {
                 Join<DespesaEntity, CredorEntity> credorJoin = root.join("credor", JoinType.INNER);
                 Predicate nomeSemelhante = cb.like(cb.lower(credorJoin.get("razaoSocial")), "%" + credorBusca.toLowerCase() + "%");
+                
                 String apenasNumeros = credorBusca.replaceAll("\\D", "");
                 if (!apenasNumeros.isEmpty()) {
                     predicates.add(cb.or(nomeSemelhante, cb.equal(credorJoin.get("cpfCnpj"), apenasNumeros)));
@@ -54,23 +83,31 @@ public class PortalDespesaService {
                     predicates.add(nomeSemelhante);
                 }
             }
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
 
+    // --- 2. GERAÇÃO DE CSV (DADOS ABERTOS) ---
     @Transactional(readOnly = true)
     public void gerarCsvDespesa(Specification<DespesaEntity> spec, PrintWriter writer) {
         List<DespesaEntity> despesas = despesaRepository.findAll(spec);
+        
+        // BOM para Excel identificar UTF-8
         writer.write('\ufeff');
         writer.println("exercicio;numero_empenho;data_empenho;orgao;credor;cpf_cnpj;elemento_despesa;valor_empenhado;valor_liquidado;valor_pago");
+        
         for (DespesaEntity entity : despesas) {
+            String credorNome = entity.getCredor() != null ? entity.getCredor().getRazaoSocial() : "NÃO INFORMADO";
+            String credorDoc = entity.getCredor() != null ? mascararCpfCnpj(entity.getCredor().getCpfCnpj()) : "";
+
             writer.printf("%s;%s;%s;%s;%s;%s;%s;%s;%s;%s%n",
                     entity.getExercicio(),
                     safeCsvField(entity.getNumeroEmpenho()),
                     entity.getDataEmpenho() != null ? entity.getDataEmpenho().toString() : "",
                     safeCsvField(entity.getOrgaoNome()),
-                    safeCsvField(entity.getCredor() != null ? entity.getCredor().getRazaoSocial() : "NÃO INFORMADO"),
-                    entity.getCredor() != null ? mascararCpfCnpj(entity.getCredor().getCpfCnpj()) : "",
+                    safeCsvField(credorNome),
+                    credorDoc,
                     safeCsvField(entity.getElementoDespesa()),
                     formatarMoeda(entity.getValorEmpenhado()),
                     formatarMoeda(entity.getValorLiquidado()),
@@ -79,14 +116,14 @@ public class PortalDespesaService {
         }
     }
 
+    // --- 3. GERAÇÃO DE PDF (FORMATO RELATÓRIO) ---
     @Transactional(readOnly = true)
     public void gerarPdfDespesa(Specification<DespesaEntity> spec, HttpServletResponse response) throws Exception {
         List<DespesaEntity> despesas = despesaRepository.findAll(spec);
-        Document document = new Document(PageSize.A4.rotate()); // Horizontal para caber mais colunas
+        Document document = new Document(PageSize.A4.rotate()); // Modo Paisagem para caber colunas
         PdfWriter.getInstance(document, response.getOutputStream());
         document.open();
 
-        // --- CABEÇALHO OFICIAL ---
         ConfiguracaoEntity config = configuracaoRepository.findAll().stream().findFirst().orElse(null);
         adicionarCabecalhoPdf(document, config);
 
@@ -95,7 +132,6 @@ public class PortalDespesaService {
         document.add(titulo);
         document.add(new Paragraph("\n"));
 
-        // --- TABELA DE DADOS ---
         PdfPTable table = new PdfPTable(7);
         table.setWidthPercentage(100f);
         table.setWidths(new float[]{1f, 1.5f, 3f, 2f, 1.5f, 1.5f, 1.5f});
@@ -124,7 +160,7 @@ public class PortalDespesaService {
         document.close();
     }
 
-    // Métodos Auxiliares de PDF e Formatação
+    // --- MÉTODOS AUXILIARES ---
     private void adicionarCabecalhoPdf(Document doc, ConfiguracaoEntity config) throws Exception {
         PdfPTable header = new PdfPTable(2);
         header.setWidthPercentage(100f);
@@ -141,7 +177,7 @@ public class PortalDespesaService {
                     img.scaleToFit(50, 50);
                     logoCell.addElement(img);
                 }
-            } catch (Exception e) { log.warn("Erro ao carregar brasão no PDF"); }
+            } catch (Exception e) { log.warn("Brasão não encontrado para o PDF"); }
         }
         header.addCell(logoCell);
 
@@ -158,12 +194,14 @@ public class PortalDespesaService {
         return cell;
     }
 
-    private String safeCsvField(String value) { return value == null ? "" : value.replace(";", ","); }
+    private String safeCsvField(String value) { 
+        return value == null ? "" : value.replace(";", ","); 
+    }
 
     private String mascararCpfCnpj(String doc) {
         if (doc == null || doc.isBlank()) return "---";
-        if (doc.length() > 11) return doc.substring(0, 3) + ".***.***/****-" + doc.substring(doc.length() - 2);
-        return "***." + doc.substring(3, 6) + ".***-**";
+        if (doc.length() == 11) return "***." + doc.substring(3, 6) + ".***-**";
+        return doc.substring(0, 3) + ".***.***/****-" + doc.substring(doc.length() - 2);
     }
 
     private String formatarMoeda(java.math.BigDecimal valor) {

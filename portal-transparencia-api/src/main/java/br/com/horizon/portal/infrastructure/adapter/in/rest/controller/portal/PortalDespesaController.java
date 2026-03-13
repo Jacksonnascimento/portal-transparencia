@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,7 +43,7 @@ public class PortalDespesaController {
             String credorNome = entity.getCredor() != null ? entity.getCredor().getRazaoSocial() : "NÃO INFORMADO";
             String doc = entity.getCredor() != null ? entity.getCredor().getCpfCnpj() : "";
             
-            // Mascara CPF para LGPD, mas deixa CNPJ visível (Pessoa Jurídica não tem sigilo em despesa pública)
+            // Mascara CPF para LGPD, mas deixa CNPJ visível
             if (doc.length() == 11) {
                 doc = "***." + doc.substring(3, 6) + ".***-**";
             }
@@ -62,24 +63,28 @@ public class PortalDespesaController {
         }
     }
 
-    // --- 1. LISTAGEM PRINCIPAL COM FILTROS (Consumida pelo seu Sócio) ---
+    // --- 1. LISTAGEM PRINCIPAL COM FILTROS (ATUALIZADO COM PERÍODO) ---
     @GetMapping
     public ResponseEntity<Page<DespesaPublicaDTO>> listarDespesasPublicas(
             @RequestParam(required = false) Integer ano,
             @RequestParam(required = false) String credor,
             @RequestParam(required = false) String numeroEmpenho,
             @RequestParam(required = false) String elementoDespesa,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio, // NOVO
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,    // NOVO
             @PageableDefault(size = 20, sort = {"dataEmpenho", "numeroEmpenho"}) Pageable pageable) {
 
-        Specification<DespesaEntity> spec = portalDespesaService.criarSpecificationDespesa(ano, credor, numeroEmpenho, elementoDespesa);
+        // Chamada atualizada do Service com 6 parâmetros
+        Specification<DespesaEntity> spec = portalDespesaService.criarSpecificationDespesa(
+                ano, credor, numeroEmpenho, elementoDespesa, dataInicio, dataFim);
         
         Page<DespesaPublicaDTO> page = despesaRepository.findAll(spec, pageable)
-                .map(DespesaPublicaDTO::fromEntity); // Converte a Entidade para o DTO limpo
+                .map(DespesaPublicaDTO::fromEntity);
                 
         return ResponseEntity.ok(page);
     }
 
-    // --- 2. CARDS DE RESUMO PÚBLICOS (Selo Ouro) ---
+    // --- 2. CARDS DE RESUMO PÚBLICOS ---
     @GetMapping("/resumo")
     public ResponseEntity<Map<String, BigDecimal>> obterResumoPorAno(@RequestParam Integer ano) {
         return ResponseEntity.ok(Map.of(
@@ -89,23 +94,26 @@ public class PortalDespesaController {
         ));
     }
 
-    // --- 3. ANOS DISPONÍVEIS (Para o select do cidadão) ---
+    // --- 3. ANOS DISPONÍVEIS ---
     @GetMapping("/anos")
     public ResponseEntity<Iterable<Integer>> listarAnos() {
         return ResponseEntity.ok(despesaRepository.findAnosDisponiveis());
     }
 
-    // --- 4. EXPORTAÇÃO DE DADOS ABERTOS (CSV) ---
+    // --- 4. EXPORTAÇÃO (ATUALIZADO COM PERÍODO) ---
     @GetMapping("/exportar")
     public void exportarDespesas(
             @RequestParam(required = false) Integer ano,
             @RequestParam(required = false) String credor,
             @RequestParam(required = false) String numeroEmpenho,
             @RequestParam(required = false) String elementoDespesa,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio, // NOVO
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,    // NOVO
             @RequestParam(name = "formato", required = false, defaultValue = "csv") String formato,
             HttpServletResponse response) throws Exception {
 
-        Specification<DespesaEntity> spec = portalDespesaService.criarSpecificationDespesa(ano, credor, numeroEmpenho, elementoDespesa);
+        Specification<DespesaEntity> spec = portalDespesaService.criarSpecificationDespesa(
+                ano, credor, numeroEmpenho, elementoDespesa, dataInicio, dataFim);
 
         if ("pdf".equalsIgnoreCase(formato)) {
             response.setContentType("application/pdf");

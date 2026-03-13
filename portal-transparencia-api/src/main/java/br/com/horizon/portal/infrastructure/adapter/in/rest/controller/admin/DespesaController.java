@@ -9,11 +9,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -29,16 +31,21 @@ public class DespesaController {
     // Injetamos o Service do Portal para reaproveitar a fábrica de filtros (Specification)
     private final PortalDespesaService searchService; 
 
-    // --- 1. LISTAGEM COM FILTROS (PAGINADA) ---
+    // --- 1. LISTAGEM COM FILTROS (PAGINADA E COM PERÍODO) ---
     @GetMapping
     public ResponseEntity<Page<DespesaEntity>> listarAdmin(
             @RequestParam(required = false) Integer ano,
             @RequestParam(required = false) String credor,
             @RequestParam(required = false) String numeroEmpenho,
             @RequestParam(required = false) String elementoDespesa,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio, // NOVO
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,    // NOVO
             @PageableDefault(size = 20, sort = "dataEmpenho") Pageable pageable) {
 
-        Specification<DespesaEntity> spec = searchService.criarSpecificationDespesa(ano, credor, numeroEmpenho, elementoDespesa);
+        // Chamada atualizada passando os 6 parâmetros para a Specification
+        Specification<DespesaEntity> spec = searchService.criarSpecificationDespesa(
+                ano, credor, numeroEmpenho, elementoDespesa, dataInicio, dataFim);
+        
         return ResponseEntity.ok(repository.findAll(spec, pageable));
     }
 
@@ -56,9 +63,9 @@ public class DespesaController {
         BigDecimal pago = repository.sumTotalPagoPorAno(ano);
 
         return ResponseEntity.ok(Map.of(
-                "valorEmpenhado", empenhado,
-                "valorLiquidado", liquidado,
-                "valorPago", pago
+                "valorEmpenhado", empenhado != null ? empenhado : BigDecimal.ZERO,
+                "valorLiquidado", liquidado != null ? liquidado : BigDecimal.ZERO,
+                "valorPago", pago != null ? pago : BigDecimal.ZERO
         ));
     }
 
