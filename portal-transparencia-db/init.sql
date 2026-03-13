@@ -376,3 +376,23 @@ CREATE TABLE IF NOT EXISTS estrutura_organizacional (
 -- Criar índices para otimizar as buscas no portal público
 CREATE INDEX IF NOT EXISTS idx_estrutura_nome_orgao ON estrutura_organizacional(nome_orgao);
 COMMENT ON COLUMN estrutura_organizacional.url_foto_dirigente IS 'Armazena a URL ou path da foto institucional do dirigente (Bala de Prata UX/TCE)';
+
+
+
+CREATE TABLE IF NOT EXISTS prestacao_contas (
+    id UUID PRIMARY KEY,
+    tipo_relatorio VARCHAR(50) NOT NULL, -- RREO, RGF, BALANCO_GERAL
+    exercicio INTEGER NOT NULL,
+    periodo INTEGER, -- Pode ser nulo se for Balanço Geral (Anual)
+    tipo_periodo VARCHAR(50) NOT NULL, -- BIMESTRE, QUADRIMESTRE, SEMESTRE, ANUAL
+    data_publicacao DATE NOT NULL,
+    arquivo_pdf_url VARCHAR(500) NOT NULL,
+    arquivo_nome VARCHAR(255) NOT NULL,
+    usuario_id UUID, -- Registra quem fez o upload (Auditoria)
+    data_criacao TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índices para otimizar as buscas do Portal Público e Retaguarda
+CREATE INDEX IF NOT EXISTS idx_prestacao_contas_exercicio ON prestacao_contas(exercicio);
+CREATE INDEX IF NOT EXISTS idx_prestacao_contas_tipo ON prestacao_contas(tipo_relatorio);

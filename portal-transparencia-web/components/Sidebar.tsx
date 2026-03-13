@@ -23,7 +23,8 @@ import {
   Menu,
   X,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  FileText // <-- Ícone adicionado aqui
 } from "lucide-react";
 import api from "@/services/api";
 
@@ -50,6 +51,7 @@ export function Sidebar() {
       items: [
         { label: "Receitas", href: "/receitas", icon: TrendingUp },
         { label: "Despesas", href: "/despesas", icon: TrendingDown },
+        { label: "Prestação de Contas", href: "/prestacao-contas", icon: FileText }, // <-- MÓDULO ADICIONADO AQUI
         { label: "Dívida Ativa", href: "/divida-ativa", icon: Scale },
         { label: "Diárias e Passagens", href: "/diarias", icon: Plane }
       ]
@@ -282,7 +284,7 @@ export function Sidebar() {
               className="hover:opacity-70 transition-opacity cursor-pointer"
             >
               <h2 className="text-[11px] font-black italic text-center tracking-tighter text-slate-500">
-                  HORIZON <span className="text-[#4242d1]">AJ</span>
+                HORIZON <span className="text-[#4242d1]">AJ</span>
               </h2>
             </a>
           </div>

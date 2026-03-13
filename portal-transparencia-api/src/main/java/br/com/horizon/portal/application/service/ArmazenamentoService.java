@@ -30,6 +30,7 @@ public class ArmazenamentoService {
             Files.createDirectories(rootLocation.resolve("config"));
             Files.createDirectories(rootLocation.resolve("sic"));
             Files.createDirectories(rootLocation.resolve("geral"));
+            Files.createDirectories(rootLocation.resolve("prestacao-contas"));
             log.info("📁 Estrutura de armazenamento inicializada em: {}", rootLocation);
         } catch (IOException e) {
             throw new RuntimeException("Não foi possível inicializar a estrutura de pastas de arquivos.", e);
