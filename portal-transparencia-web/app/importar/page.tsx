@@ -5,6 +5,8 @@ import { Sidebar } from '@/components/Sidebar';
 import { ImportarReceitas } from '@/components/importar/ImportarReceitas';
 import { ImportarDespesas } from '@/components/importar/ImportarDespesas';
 import { ImportarDividaAtiva } from '@/components/importar/ImportarDividaAtiva';
+import { ImportarServidores } from '@/components/importar/ImportarServidores';
+import { ImportarFolha } from '@/components/importar/ImportarFolha';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -55,13 +57,26 @@ export default function ImportarPage() {
         <div className="min-h-[400px]">
           {activeTab === 'receitas' && <ImportarReceitas />}
           {activeTab === 'divida' && <ImportarDividaAtiva />}
-          
-          {/* ATUALIZADO: Agora renderiza o componente real de importação de despesas */}
           {activeTab === 'despesas' && <ImportarDespesas />}
           
-          {/* Módulos ainda não implementados permanecem com EmptyState */}
-          {activeTab === 'folha' && <EmptyState title="Módulo de Pessoal" desc="A importação da folha de pagamento está em desenvolvimento." icon={<Users size={48} className="text-slate-300 mb-4" />} />}
-          {activeTab === 'contratos' && <EmptyState title="Licitações e Contratos" desc="Módulo destinado à carga de processos licitatórios." icon={<FileText size={48} className="text-slate-300 mb-4" />} />}
+          {/* Módulo de Pessoal Ativado */}
+          {activeTab === 'folha' && (
+            <div className="space-y-12 pb-20">
+              <ImportarServidores />
+              <div className="border-t border-slate-200 pt-12">
+                <ImportarFolha />
+              </div>
+            </div>
+          )}
+          
+          {/* Módulo de Contratos permanece em desenvolvimento */}
+          {activeTab === 'contratos' && (
+            <EmptyState 
+              title="Licitações e Contratos" 
+              desc="Módulo destinado à carga de processos licitatórios, contratos e aditivos." 
+              icon={<FileText size={48} className="text-slate-300 mb-4" />} 
+            />
+          )}
         </div>
       </main>
     </div>

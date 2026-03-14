@@ -396,3 +396,63 @@ CREATE TABLE IF NOT EXISTS prestacao_contas (
 -- Índices para otimizar as buscas do Portal Público e Retaguarda
 CREATE INDEX IF NOT EXISTS idx_prestacao_contas_exercicio ON prestacao_contas(exercicio);
 CREATE INDEX IF NOT EXISTS idx_prestacao_contas_tipo ON prestacao_contas(tipo_relatorio);
+
+
+-- Tabela de Servidores, Autoridades e Terceirizados
+CREATE TABLE IF NOT EXISTS servidor (
+    id BIGSERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    cpf VARCHAR(14) NOT NULL,
+    matricula VARCHAR(50),
+    cargo VARCHAR(150) NOT NULL,
+    lotacao VARCHAR(150) NOT NULL,
+    tipo_vinculo VARCHAR(50) NOT NULL, -- EFETIVO, COMISSIONADO, TERCEIRIZADO, ESTAGIARIO
+    data_admissao DATE NOT NULL,
+    data_exoneracao DATE,
+    carga_horaria INTEGER,
+    
+    -- Exigência exclusiva do PNTP para Terceirizados
+    empresa_contratante VARCHAR(150),
+    cnpj_contratante VARCHAR(18),
+
+    -- Campos de Auditoria e Rastreabilidade (Obrigatórios)
+    id_importacao VARCHAR(50),
+    criado_por VARCHAR(100),
+    atualizado_por VARCHAR(100),
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de Contracheque / Folha de Pagamento (Histórico Mensal)
+CREATE TABLE IF NOT EXISTS folha_pagamento (
+    id BIGSERIAL PRIMARY KEY,
+    servidor_id BIGINT NOT NULL,
+    exercicio INTEGER NOT NULL, -- Ano (Ex: 2024)
+    mes INTEGER NOT NULL,       -- Mês (Ex: 1 a 12)
+    
+    -- Segregação de Verbas (Armadilha dos Tribunais de Contas)
+    remuneracao_bruta NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    verbas_indenizatorias NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    descontos_legais NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    salario_liquido NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+
+    -- Campos de Auditoria e Rastreabilidade (Obrigatórios)
+    id_importacao VARCHAR(50),
+    criado_por VARCHAR(100),
+    atualizado_por VARCHAR(100),
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_folha_servidor FOREIGN KEY (servidor_id) REFERENCES servidor (id) ON DELETE CASCADE
+);
+
+-- Índices para garantir alta performance nos filtros da API Pública e do Retaguarda
+CREATE INDEX IF NOT EXISTS idx_servidor_nome ON servidor(nome);
+CREATE INDEX IF NOT EXISTS idx_servidor_cpf ON servidor(cpf);
+CREATE INDEX IF NOT EXISTS idx_servidor_cargo ON servidor(cargo);
+CREATE INDEX IF NOT EXISTS idx_folha_exercicio_mes ON folha_pagamento(exercicio, mes);
+CREATE INDEX IF NOT EXISTS idx_folha_servidor_id ON folha_pagamento(servidor_id);
+
+-- Índices para garantir rapidez no "Rollback/Desfazer" da Importação
+CREATE INDEX IF NOT EXISTS idx_servidor_id_importacao ON servidor(id_importacao);
+CREATE INDEX IF NOT EXISTS idx_folha_id_importacao ON folha_pagamento(id_importacao);
