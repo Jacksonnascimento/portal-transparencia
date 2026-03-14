@@ -14,7 +14,8 @@ import java.util.List;
 public interface FolhaPagamentoRepository extends JpaRepository<FolhaPagamentoEntity, Long>, JpaSpecificationExecutor<FolhaPagamentoEntity> {
 
     void deleteByIdImportacao(String idImportacao);
-
+    
+    List<FolhaPagamentoEntity> findAllByIdImportacao(String idImportacao);
     boolean existsByServidorIdAndExercicioAndMes(Long servidorId, Integer exercicio, Integer mes);
 
     // --- QUERIES PARA DASHBOARD E ESTATÍSTICAS ---

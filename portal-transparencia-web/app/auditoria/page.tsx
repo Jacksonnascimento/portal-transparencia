@@ -92,10 +92,11 @@ const RenderizadorJSON = ({ data }: { data?: string }) => {
 const ENTIDADE_PARA_ROTA: Record<string, string> = {
   "RECEITA": "receitas",
   "DESPESA": "despesas",
-  "DIVIDA_ATIVA": "divida-ativa"
+  "DIVIDA_ATIVA": "divida-ativa",
+  "SERVIDOR": "servidores",
+  "FOLHA_PAGAMENTO": "folha-pagamento"
 };
 
-// CORREÇÃO 1: Padronizamos os values para evitar duplicatas e buscas vazias
 const ACOES_POR_ENTIDADE: Record<string, { value: string, label: string }[]> = {
   "CONFIGURACAO": [
     { value: "ATUALIZACAO", label: "ATUALIZAÇÃO" },
@@ -117,15 +118,22 @@ const ACOES_POR_ENTIDADE: Record<string, { value: string, label: string }[]> = {
   "DIVIDA_ATIVA": [
     { value: "IMPORTACAO_LOTE_CSV", label: "IMPORTAÇÃO (CSV)" },
     { value: "EXCLUSAO_LOTE", label: "EXCLUSÃO / ROLLBACK" }
+  ],
+  "SERVIDOR": [
+    { value: "IMPORTACAO", label: "IMPORTAÇÃO (CSV)" },
+    { value: "EXCLUSAO_LOTE", label: "EXCLUSÃO / ROLLBACK" }
+  ],
+  "FOLHA_PAGAMENTO": [
+    { value: "IMPORTACAO", label: "IMPORTAÇÃO (CSV)" },
+    { value: "EXCLUSAO_LOTE", label: "EXCLUSÃO / ROLLBACK" }
   ]
 };
 
-// CORREÇÃO 2: Removemos duplicatas baseadas no LABEL para quando nenhuma entidade está selecionada
 const TODAS_ACOES = Array.from(
   new Map(
     Object.values(ACOES_POR_ENTIDADE)
       .flat()
-      .map(item => [item.label, item]) // O Map substitui chaves iguais, limpando as duplicatas de rótulo
+      .map(item => [item.label, item]) 
   ).values()
 );
 
@@ -205,7 +213,12 @@ export default function AuditoriaPage() {
     if (!logParaReverter) return;
     try {
       const rota = ENTIDADE_PARA_ROTA[logParaReverter.entidade];
-      await api.delete(`/${rota}/lote/${logParaReverter.entidadeId}`);
+      
+      // AJUSTE: Módulos de RH usam a rota /importacao/id em vez de /lote/id
+      const isRH = logParaReverter.entidade === 'SERVIDOR' || logParaReverter.entidade === 'FOLHA_PAGAMENTO';
+      const endpoint = isRH ? `/${rota}/importacao/${logParaReverter.entidadeId}` : `/${rota}/lote/${logParaReverter.entidadeId}`;
+      
+      await api.delete(endpoint);
       
       setLogParaReverter(null);
       fetchLogs(0);
@@ -244,6 +257,8 @@ export default function AuditoriaPage() {
               <option value="RECEITA">RECEITAS</option>
               <option value="DESPESA">DESPESAS</option>
               <option value="DIVIDA_ATIVA">DÍVIDA ATIVA</option>
+              <option value="SERVIDOR">SERVIDORES</option>
+              <option value="FOLHA_PAGAMENTO">FOLHA DE PAGAMENTO</option>
             </select>
           </div>
           <div className="flex-1 min-w-[180px]">
@@ -277,28 +292,37 @@ export default function AuditoriaPage() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {loading ? ([...Array(5)].map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={5} className="px-6 py-6 bg-slate-50/20"></td></tr>)) : data?.content.length === 0 ? (<tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">Nenhum registro encontrado</td></tr>) : (
-                  data?.content.map((log) => (
-                    <tr key={log.id} onClick={() => setSelectedLog(log)} className="hover:bg-slate-50 transition-colors text-xs group cursor-pointer">
-                      <td className="px-6 py-4 text-slate-500 font-mono font-semibold">{formatDate(log.dataHora)}</td>
-                      <td className="px-6 py-4 font-bold text-slate-700">{log.usuarioNome}</td>
-                      <td className="px-6 py-4 flex flex-col items-start gap-1">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border w-max ${
-                          log.acao.includes("IMPORTACAO") ? "bg-blue-100 text-blue-700 border-blue-200" : 
-                          log.acao.includes("EXCLUSAO") ? "bg-red-100 text-red-700 border-red-200" : "bg-slate-100 text-slate-700 border-slate-200"
-                        }`}>{log.acao}</span>
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{log.entidade}</span>
-                      </td>
-                      <td className="px-6 py-4 font-bold text-slate-500 font-mono text-[11px]">{log.entidadeId}</td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex justify-center gap-2">
-                          <button className="p-1.5 text-slate-300 hover:text-black rounded transition-all" title="Ver Detalhes"><Eye size={18} /></button>
-                          {log.acao === "IMPORTACAO_LOTE_CSV" && !lotesJaExcluidos.has(log.entidadeId) && (
-                            <button onClick={(e) => { e.stopPropagation(); setLogParaReverter(log); }} className="p-1.5 text-red-300 hover:text-red-600 rounded transition-all" title="Desfazer Importação"><Trash2 size={18} /></button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  data?.content.map((log) => {
+                    // AJUSTE: Identificando se é uma ação de importação válida para desfazer
+                    const isImportAction = log.acao === "IMPORTACAO_LOTE_CSV" || log.acao === "IMPORTACAO";
+                    const isBatchLog = log.entidadeId.includes("LOTE");
+                    const canUndo = isImportAction && isBatchLog && !lotesJaExcluidos.has(log.entidadeId);
+
+                    return (
+                      <tr key={log.id} onClick={() => setSelectedLog(log)} className="hover:bg-slate-50 transition-colors text-xs group cursor-pointer">
+                        <td className="px-6 py-4 text-slate-500 font-mono font-semibold">{formatDate(log.dataHora)}</td>
+                        <td className="px-6 py-4 font-bold text-slate-700">{log.usuarioNome}</td>
+                        <td className="px-6 py-4 flex flex-col items-start gap-1">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border w-max ${
+                            log.acao.includes("IMPORTACAO") ? "bg-blue-100 text-blue-700 border-blue-200" : 
+                            log.acao.includes("EXCLUSAO") ? "bg-red-100 text-red-700 border-red-200" : "bg-slate-100 text-slate-700 border-slate-200"
+                          }`}>{log.acao}</span>
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{log.entidade}</span>
+                        </td>
+                        <td className={`px-6 py-4 font-bold font-mono text-[11px] ${!log.entidadeId.includes("LOTE") ? "text-slate-300 italic font-normal" : "text-slate-500"}`}>
+                          {log.entidadeId}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex justify-center gap-2">
+                            <button className="p-1.5 text-slate-300 hover:text-black rounded transition-all" title="Ver Detalhes"><Eye size={18} /></button>
+                            {canUndo && (
+                              <button onClick={(e) => { e.stopPropagation(); setLogParaReverter(log); }} className="p-1.5 text-red-300 hover:text-red-600 rounded transition-all" title="Desfazer Importação"><Trash2 size={18} /></button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -347,25 +371,50 @@ export default function AuditoriaPage() {
                           <tr>
                             <th className="p-3">Exercício / Ano</th>
                             <th className="p-3">Detalhe / Origem</th>
-                            <th className="p-3 text-right">Valor</th>
+                            <th className="p-3 text-right">Identificação / Valor</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                          {parseDadosExcluidos(selectedLog.dadosAnteriores).map((item: any, idx: number) => (
-                            <tr key={idx} className="hover:bg-red-50/30">
-                              <td className="p-3">{item.exercicio || item.anoInscricao || '---'}</td>
-                              <td className="p-3 font-bold">
-                                {item.origem || item.nomeDevedor || item.numeroEmpenho || '---'}
-                                <span className="block text-[8px] text-slate-400 font-normal uppercase">
-                                  {item.razaoSocial || item.tipoDivida || ''}
-                                </span>
-                              </td>
-                              <td className="p-3 text-right font-black text-red-600">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                                  .format(item.valorArrecadado || item.valorTotalDivida || item.valorEmpenhado || 0)}
-                              </td>
-                            </tr>
-                          ))}
+                          {parseDadosExcluidos(selectedLog.dadosAnteriores).map((item: any, idx: number) => {
+                            
+                            // Lógica inteligente para exibir os dados baseados na Entidade
+                            const isServidor = selectedLog.entidade === 'SERVIDOR';
+                            const isFolha = selectedLog.entidade === 'FOLHA_PAGAMENTO';
+                            
+                            let detalhePrincipal = item.origem || item.nomeDevedor || item.numeroEmpenho;
+                            let detalheSecundario = item.razaoSocial || item.tipoDivida || '';
+                            let valorExibicao = item.valorArrecadado || item.valorTotalDivida || item.valorEmpenhado || 0;
+                            let formatMoney = true;
+
+                            if (isServidor) {
+                              detalhePrincipal = item.nome;
+                              detalheSecundario = item.cargo;
+                              valorExibicao = item.cpf;
+                              formatMoney = false;
+                            } else if (isFolha) {
+                              detalhePrincipal = item.servidor?.nome || item.nomeServidor || 'Servidor';
+                              detalheSecundario = `Mês: ${item.mes}`;
+                              valorExibicao = item.salarioLiquido;
+                            }
+
+                            return (
+                              <tr key={idx} className="hover:bg-red-50/30">
+                                <td className="p-3">{item.exercicio || item.anoInscricao || (item.dataAdmissao ? new Date(item.dataAdmissao).getFullYear() : '---')}</td>
+                                <td className="p-3 font-bold">
+                                  {detalhePrincipal || '---'}
+                                  <span className="block text-[8px] text-slate-400 font-normal uppercase">
+                                    {detalheSecundario}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-right font-black text-red-600">
+                                  {formatMoney 
+                                    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorExibicao)
+                                    : valorExibicao
+                                  }
+                                </td>
+                              </tr>
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>
